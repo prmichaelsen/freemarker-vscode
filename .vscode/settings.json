@@ -1,0 +1,35 @@
+{
+	"typescript.preferences.quoteStyle": "single",
+	"editor.insertSpaces": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit"
+	},
+  "jest.rootPath": "client",
+  "editor.detectIndentation": false,
+  "editor.tabSize": 2,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    ".viceroy": true,
+    "apollo-overrides": true,
+    "release-info": true,
+    "src/*/build": false,
+    "build": false,
+    "env": true,
+    "packageInfo*": true,
+    ".bemol": true,
+    "**/CVS": true,
+    "out": false
+  },
+  "search.exclude": {
+    "**/out": true,
+    "**/coverage": true
+  },
+  "cSpell.words": [
+    "freemarker",
+    "userdefined"
+  ]
+}

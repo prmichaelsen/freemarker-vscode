@@ -1,0 +1,10 @@
+*.actual.json
+*.expected.json
+*.vsix
+.vscode-test
+build
+client/server
+coverage
+node_modules
+out
+resources/config.json

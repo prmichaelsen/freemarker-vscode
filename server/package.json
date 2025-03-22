@@ -1,0 +1,27 @@
+{
+	"name": "freemarker-language-server",
+	"description": "Example implementation of a language server in node.",
+	"version": "1.0.0",
+	"author": "mchpatr",
+	"license": "MIT",
+	"engines": {
+		"node": "*"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Microsoft/vscode-extension-samples"
+	},
+	"dependencies": {
+		"fast-fuzzy": "^1.12.0",
+		"perl-regex": "^1.0.4",
+		"vscode-languageserver": "^9.0.1",
+		"vscode-languageserver-textdocument": "^1.0.11",
+		"vscode-uri": "^3.0.8"
+	},
+	"scripts": {
+		"test": "jest --passWithNoTests"
+	},
+	"devDependencies": {
+		"@types/mocha": "^10.0.10"
+	}
+}

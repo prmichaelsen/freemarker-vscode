@@ -1,0 +1,9 @@
+{
+  "root": [
+    "./src/test/if-diagnostic.test.ts",
+    "./src/test/helper.ts",
+    "./src/test/index.ts",
+    "./src/test/runTest.ts"
+  ],
+  "version": "5.6.2"
+}

@@ -1,0 +1,24 @@
+{
+	"name": "freemarker-vscode-language-client",
+	"description": "VSCode part of a language server",
+	"author": "prmichaelsen",
+	"license": "MIT",
+	"version": "0.0.0",
+	"publisher": "prmichaelsen",
+	"engines": {
+		"vscode": "^1.75.0"
+	},
+	"dependencies": {
+		"aws-sdk": "^2.1691.0",
+		"vscode-languageclient": "^9.0.1",
+		"vscode-test-adapter-api": "^1.9.0",
+		"vscode-test-adapter-util": "^0.7.1"
+	},
+	"devDependencies": {
+		"@types/jest": "^29.5.14",
+		"@types/vscode": "^1.75.1",
+		"@vscode/test-electron": "^2.3.9",
+		"jest": "^29.7.0",
+		"ts-jest": "^29.2.5"
+	}
+}
