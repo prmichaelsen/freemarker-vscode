@@ -13,33 +13,34 @@ describe('FreeMarkerTokenizer', () => {
           </#if>
         </script>
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false, ignoreWhitespace: true });
       expect(tokens).toEqual([
-        { type: string, value: `
-        <script type="text/javascript">
-          ` },
+        { type: string, value: `` },
+        { type: "<", value: "<" },
+        { type: "script", value: `script` },
+        { type: "string", value: `type="text/javascript"` },
+        { type: ">", value: ">" },
+        { type: string, value: `` },
         { type: `<#`, value: `<#` },
         { type: `if`, value: `if` },
         {
           type: `string`,
-          value: ` deviceType == \"MOBILE\"`,
+          value: `deviceType == \"MOBILE\"`,
         },
         { type: `>`, value: `>` },
-        { type: string, value: `
-              alert("Mobile");
-          ` },
+        { type: string, value: `alert("Mobile");` },
         { type: `<#`, value: `<#` },
         { type: `else`, value: `else` },
         { type: `>`, value: `>` },
-        { type: string, value: `
-              alert("Desktop");
-          ` },
+        { type: string, value: `alert("Desktop");` },
         { type: `</#`, value: `</#` },
         { type: `if`, value: `if` },
         { type: `>`, value: `>` },
-        { type: string, value: `
-        </script>
-      ` },
+        { type: string, value: `` },
+        { type: "</", value: "</" },
+        { type: "script", value: `script` },
+        { type: ">", value: ">" },
+        { type: string, value: `` },
       ]);
     });
 
@@ -49,36 +50,34 @@ describe('FreeMarkerTokenizer', () => {
             <div></div>
           </#if>
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false, ignoreWhitespace: true });
       expect(tokens).toEqual([
-        {
-          type: `string`,
-          value: `
-          `,
-        },
+        { type: `string`, value: `` },
         { type: `<#`, value: `<#` },
         { type: `if`, value: `if` },
         {
           type: `string`,
-          value: ` deviceType == \"MOBILE\"`,
+          value: `deviceType == \"MOBILE\"`,
         },
         { type: `>`, value: `>` },
-        { type: string, value: `
-            <div></div>
-          ` },
+        { type: `string`, value: `` },
+        { type: "<", value: "<" },
+        { type: "div", value: "div" },
+        { type: ">", value: ">" },
+        { type: "</", value: "</" },
+        { type: "div", value: "div" },
+        { type: ">", value: ">" },
+        { type: `string`, value: `` },
         { type: `</#`, value: `</#` },
         { type: `if`, value: `if` },
         { type: `>`, value: `>` },
-        {
-          type: `string`,
-          value: `
-      ` },
+        { type: `string`, value: `` },
       ]);
     });
 
     it('handles self closing ftl tags', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`<#nested/>`);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: `<#`, value: `<#` },
         { type: `nested`, value: `nested` },
@@ -88,7 +87,7 @@ describe('FreeMarkerTokenizer', () => {
 
     it('handles self closing macro tags', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`<@MyMacro/>`);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: `<@`, value: `<@` },
         { type: `MyMacro`, value: `MyMacro` },
@@ -98,7 +97,7 @@ describe('FreeMarkerTokenizer', () => {
 
     it('self closing tags', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`<#nested/><@MyMacro/>`);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: `<#`, value: `<#` },
         { type: `nested`, value: `nested` },
@@ -113,7 +112,7 @@ describe('FreeMarkerTokenizer', () => {
 
     it('handles vars in tag', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`<@aui.list cssClass="gc-option-swatch-list \${orientationClass}"></@aui.list>`);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: `<@`, value: `<@` },
         { type: `aui.list`, value: `aui.list` },
@@ -134,7 +133,7 @@ describe('FreeMarkerTokenizer', () => {
           <@MyMacro arg1=arg1 arg2=arg2>
           </@MyMacro>
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: `
           ` },
@@ -157,7 +156,7 @@ describe('FreeMarkerTokenizer', () => {
           <@MyMacro arg1=arg1 ; arg2>
           </@MyMacro>
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: `
           ` },
@@ -181,7 +180,7 @@ describe('FreeMarkerTokenizer', () => {
           <@MyMacro>
           </@MyMacro>
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: `
           ` },
@@ -202,7 +201,7 @@ describe('FreeMarkerTokenizer', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`
         <div>\${var}</div>
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: `
         <div>` },
@@ -220,7 +219,7 @@ describe('FreeMarkerTokenizer', () => {
         <#-- comment -->
         Text 2
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: `
         Text 1
@@ -242,43 +241,39 @@ describe('FreeMarkerTokenizer', () => {
             <span></span>
           </#if>
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false, ignoreWhitespace: true });
       expect(tokens).toEqual([
-        {
-          type: `string`,
-          value: `
-          `,
-        },
+        { type: `string`, value: `` },
         { type: `<#`, value: `<#` },
         { type: `if`, value: `if` },
         {
           type: `string`,
-          value: ` deviceType == \"MOBILE\"`,
+          value: `deviceType == \"MOBILE\"`,
         },
         { type: `>`, value: `>` },
-        {
-          type: `string`,
-          value: `
-            <div></div>
-          `,
-        },
+        { type: `string`, value: `` },
+        { type: "<", value: "<" },
+        { type: "div", value: "div" },
+        { type: ">", value: ">" },
+        { type: "</", value: "</" },
+        { type: "div", value: "div" },
+        { type: ">", value: ">" },
+        { type: `string`, value: `` },
         { type: `<#`, value: `<#` },
         { type: `else`, value: `else` },
         { type: `>`, value: `>` },
-        {
-          type: `string`,
-          value: `
-            <span></span>
-          `,
-        },
+        { type: `string`, value: `` },
+        { type: "<", value: "<" },
+        { type: "span", value: "span" },
+        { type: ">", value: ">" },
+        { type: "</", value: "</" },
+        { type: "span", value: "span" },
+        { type: ">", value: ">" },
+        { type: `string`, value: `` },
         { type: `</#`, value: `</#` },
         { type: `if`, value: `if` },
         { type: `>`, value: `>` },
-        {
-          type: `string`,
-          value: `
-      `,
-        },
+        { type: `string`, value: `` },
       ]);
     });
 
@@ -292,7 +287,7 @@ describe('FreeMarkerTokenizer', () => {
               Text 1
             </div>
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: `
           ` },
@@ -301,32 +296,51 @@ describe('FreeMarkerTokenizer', () => {
         { type: "string", value: " deviceType == \"MOBILE\"" },
         { type: ">", value: ">" },
         { type: "string", value: `
-            <div id="id1">
-          ` },
+            `
+        },
+        { type: "<", value: "<" },
+        { type: "div", value: "div" },
+        { type: "string", value: ` id="id1"` },
+        { type: ">", value: ">" },
+        { type: "string", value: `
+          `
+        },
         { type: "<#", value: "<#" },
         { type: "else", value: "else" },
         { type: ">", value: ">" },
         { type: "string", value: `
-            <div id="id2">
-          ` },
+            `
+        },
+        { type: "<", value: "<" },
+        { type: "div", value: "div" },
+        { type: "string", value: ` id="id2"` },
+        { type: ">", value: ">" },
+        { type: "string", value: `
+          `
+        },
         { type: "</#", value: "</#" },
         { type: "if", value: "if" },
         { type: ">", value: ">" },
         { type: "string", value: `
               Text 1
-            </div>
-      ` },
+            ` },
+        { type: "</", value: "</" },
+        { type: "div", value: "div" },
+        { type: ">", value: ">" },
+        { type: "string", value: `
+      `
+        },
       ]);
     });
 
     it.skip('basic tokenizer 9', () => {
-      const expression = "(isRequired)?then('true', 'false')"
+      const expression = "(isRequired)?then('true', 'false}')"
       const tokenizer = new FreeMarkerTokenizer(/*html*/`
         <fieldset 
           aria-required="\${${expression}}"
         ></fieldset>
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: `
         <fieldset 
@@ -342,7 +356,7 @@ describe('FreeMarkerTokenizer', () => {
 
     it('handles unknown ftl tags', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`<#foo></#bar>`);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: `<#`, value: `<#` },
         { type: `foo`, value: `foo` },
@@ -355,7 +369,7 @@ describe('FreeMarkerTokenizer', () => {
 
     it('tags with spaces', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`<#tag ></#tag >`);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: `<#`, value: `<#` },
         { type: `tag`, value: `tag` },
@@ -370,7 +384,7 @@ describe('FreeMarkerTokenizer', () => {
 
     it('ignores tags starting with .', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`<#.tag></#.tag>`);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: `<#`, value: `<#` },
         { type: string, value: `.tag` },
@@ -383,7 +397,7 @@ describe('FreeMarkerTokenizer', () => {
 
     it('tags with .', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`<#namespace.tag></#namespace.tag>`);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: `<#`, value: `<#` },
         { type: `namespace.tag`, value: `namespace.tag` },
@@ -402,7 +416,7 @@ describe('FreeMarkerTokenizer', () => {
             <@
         -->
       `);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: `
         ` },
@@ -419,7 +433,7 @@ describe('FreeMarkerTokenizer', () => {
 
     it('unopened var without recursing', () => {
       const tokenizer = new FreeMarkerTokenizer(expressionClose);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: "}" }, 
       ]);
@@ -427,9 +441,51 @@ describe('FreeMarkerTokenizer', () => {
 
     it.skip('any unopened without recursing', () => {
       const tokenizer = new FreeMarkerTokenizer(/*html*/`${expressionClose}>--></#</@`);
-      const tokens = tokenizer.tokenize(false);
+      const tokens = tokenizer.tokenize({ index: false });
       expect(tokens).toEqual([
         { type: string, value: `${expressionClose}>--></#</@` }, 
+      ]);
+    });
+
+    it('reads html tag', () => {
+      const tokenizer = new FreeMarkerTokenizer(/*html*/`
+        <span></span>
+      `);
+      const tokens = tokenizer.tokenize({ index: false });
+      expect(tokens).toEqual([
+        {
+          type: string, value: `
+        `,
+        },
+        {
+          type: "<",
+          value: "<",
+        },
+        {
+          type: "span",
+          value: "span",
+        },
+        {
+          type: ">",
+          value: ">",
+        },
+        {
+          type: "</",
+          value: "</",
+        },
+        {
+          type: "span",
+          value: "span",
+        },
+        {
+          type: ">",
+          value: ">",
+        },
+        {
+          type: "string",
+          value: `
+      `,
+          }
       ]);
     });
 

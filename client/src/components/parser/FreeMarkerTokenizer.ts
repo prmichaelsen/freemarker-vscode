@@ -8,6 +8,10 @@ import {
 } from './grammar';
 
 
+export interface TokenizeOptions {
+  index?: boolean;
+  ignoreWhitespace?: boolean;
+}
 export class FreeMarkerTokenizer {
   text: string;
   pos: number = 0;
@@ -61,57 +65,87 @@ export class FreeMarkerTokenizer {
   }
 
 
-  tokenize(index = true): Token[] {
+  tokenize(options: TokenizeOptions = {}): Token[] {
+    const { 
+      index = true,
+      ignoreWhitespace = false,
+    } = options;
     const tokens: Token[] = [];
 
     while (this.pos < this.text.length) {
       tokens.push(...this.readFreeMarker());
     }
 
+    let _tokens = tokens;
     if (!index) {
-      return tokens.map(token => {
+      _tokens = _tokens.map(token => {
         delete token.index;
         return token;
       });
-    } else {
-      return tokens;
     }
+
+    if (ignoreWhitespace) {
+      _tokens = _tokens.map(token => {
+        return {
+          ...token,
+          value: token.value.trim(),
+        };
+      });
+      // TODO Tests require updating
+      // if this is uncommented
+      // _tokens = _tokens.filter(token => {
+      //   return token.value.length > 0;
+      // });
+    }
+    return _tokens;
   }
 
   readFreeMarker(): Token[] {
     const tokens: Token[] = [];
-    // tokens.push(...this.readUntil(
-    //   "${", "<#", "<@", "<#--",
-    //   "}", "</#", "</@", "-->",
-    // ));
     tokens.push(...this.readUntil(
-      "<#", "<@", "<#--",
-      "</#", "</@", "-->",
+      "<#", "<@", "<#--", "<",
+      "</#", "</@", "-->", "</",
     ));
     // if (this.match("${")) {
     //   tokens.push(this.read("${"));
     //   tokens.push(...this.readFirst("}"));
-    // } else if (this.match("<#--")){
+    // }
+    // else if (this.match("<#--")){
     if (this.match("<#--")){
       tokens.push(this.read("<#--"));
       tokens.push(...this.readFirst("-->"));
-    } else if (this.match("<#")) {
+    } 
+    else if (this.match("<#")) {
       tokens.push(this.read("<#"));
       tokens.push(...this.readFtlTag());
       tokens.push(...this.readFirst("/>", ">"));
-    } else if (this.match("</#")) {
+    } 
+    else if (this.match("</#")) {
       tokens.push(this.read("</#"));
       tokens.push(...this.readFtlTag());
       tokens.push(...this.readFirst(">"));
-    } else if (this.match("<@")) {
+    } 
+    else if (this.match("<@")) {
       tokens.push(this.read("<@"));
       tokens.push(...this.readFtlTag());
       tokens.push(...this.readFirst("/>", ">"));
-    } else if (this.match("</@")) {
+    } 
+    else if (this.match("</@")) {
       tokens.push(this.read("</@"));
       tokens.push(...this.readFtlTag());
       tokens.push(...this.readFirst(">"));
-    } else {
+    } 
+    else if (this.match("</")) {
+      tokens.push(this.read("</"));
+      tokens.push(...this.readHtmlTag());
+      tokens.push(...this.readFirst(">"));
+    }
+    else if (this.match("<")) {
+      tokens.push(this.read("<"));
+      tokens.push(...this.readHtmlTag());
+      tokens.push(...this.readFirst("/>", ">"));
+    }
+    else {
       tokens.push(...this.readUntilEnd());
     }
     return tokens;
@@ -262,6 +296,25 @@ export class FreeMarkerTokenizer {
     while (this.pos < this.text.length) {
       const char = this.text[this.pos];
       if (/\.|[a-zA-Z_]|[0-9]/.test(char)) {
+        value += char;
+        this.pos++;
+      } else {
+        break;
+      }
+    }
+    if (value.length > 0) {
+      return [{ type: value, value, index: start }];
+    } else {
+      return [];
+    }
+  }
+
+  readHtmlTag(): Token[] {
+    let value = '';
+    let start = this.pos;
+    while (this.pos < this.text.length) {
+      const char = this.text[this.pos];
+      if (/[a-zA-Z]|[0-9]/.test(char)) {
         value += char;
         this.pos++;
       } else {

@@ -1,11 +1,10 @@
 import { RangeObject } from '../vscode/RangeObject';
-import { closeClose, closeOpen, commentClose, commentOpen, directiveOpenClose, directiveOpenOpen, userDefinedDirectiveOpenClose, userDefinedDirectiveOpenOpen } from './grammar';
+import { closeClose, closeOpen, commentClose, commentOpen, directiveOpenClose, directiveOpenOpen, htmlOpenClose, htmlOpenOpen, userDefinedDirectiveOpenClose, userDefinedDirectiveOpenOpen } from './grammar';
 
 export interface BaseToken {
 	index?: number;
 	range?: RangeObject;
 }
-
 export interface DirectiveOpenOpenToken extends BaseToken {
   type: typeof directiveOpenOpen,
   value: typeof directiveOpenOpen,
@@ -24,6 +23,16 @@ export interface UserDefinedDirectiveOpenOpenToken extends BaseToken {
 export interface UserDefinedDirectiveOpenCloseToken extends BaseToken {
   type: typeof userDefinedDirectiveOpenClose,
   value: typeof userDefinedDirectiveOpenClose,
+}
+
+export interface HtmlTagOpenOpenToken extends BaseToken {
+  type: typeof htmlOpenOpen,
+  value: typeof htmlOpenOpen,
+}
+
+export interface HtmlTagOpenCloseToken extends BaseToken {
+  type: typeof htmlOpenClose,
+  value: typeof htmlOpenClose,
 }
 
 export interface CloseOpenToken extends BaseToken {
@@ -61,6 +70,8 @@ export type Token =
   | DirectiveOpenCloseToken
   | UserDefinedDirectiveOpenOpenToken
   | UserDefinedDirectiveOpenCloseToken
+  | HtmlTagOpenOpenToken
+  | HtmlTagOpenCloseToken
   | CloseOpenToken
   | CloseToken
   | AnyToken

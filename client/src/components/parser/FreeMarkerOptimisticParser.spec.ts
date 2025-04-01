@@ -1,117 +1,232 @@
 import { FreeMarkerOptimisticParser } from './FreeMarkerOptimisticParser';
 import { FreeMarkerTokenizer } from './FreeMarkerTokenizer';
+import { close, open, root } from './grammar';
 
 describe("FreeMarkerOptimisticParser", () => {
 
-  it('parses open close user defined directives', () => {
-    const tokenizer = new FreeMarkerTokenizer(`<@core.MyMacro arg1=arg1><span></span></@core.MyMacro>`);
-    const tokens = tokenizer.tokenize(false);
+  it('parses self closing html tag', () => {
+    const tokenizer = new FreeMarkerTokenizer(/*html*/`
+      <input/>
+    `);
+    const tokens = tokenizer.tokenize({ index: false, ignoreWhitespace: true });
     const parser = new FreeMarkerOptimisticParser(tokens);
     const tree = parser.parse();
     expect(tree).toEqual({
-      "elements": [
+      type: root,
+      elements: [
         {
-          "close": {
-            "type": ">",
-            "value": ">",
+          type: "string",
+          value: { type: "string", value: "" },
+        },
+        {
+          close: { type: "/>", value: "/>" },
+          elements: [],
+          open: { type: "<", value: "<" },
+          selfClosing: true,
+          tag: {
+            type: "input",
+            value: "input",
+          },
+          tagName: "input",
+          type: "html",
+        },
+        {
+          type: "string",
+          value: { type: "string", value: "" },
+        },
+      ],
+    });
+  });
+
+  it('parses open close html tag', () => {
+    const tokenizer = new FreeMarkerTokenizer(/*html*/`
+      <span></span>
+    `);
+    const tokens = tokenizer.tokenize({ index: false, ignoreWhitespace: true });
+    const parser = new FreeMarkerOptimisticParser(tokens);
+    const tree = parser.parse();
+    expect(tree).toEqual({
+      type: root,
+      elements: [
+        {
+          type: "string",
+          value: { type: "string", value: "" },
+        },
+        {
+          type: "html",
+          open: { type: "<", value: "<" },
+          tag: { type: "span", value: "span" },
+          tagName: "span",
+          close: { type: ">", value: ">" },
+          elements: [
+            {
+              type: open,
+              open: { type: "<", value: "<" },
+              tag: { type: "span", value: "span" },
+              close: { type: ">", value: ">" },
+              elements: []
+            },
+            {
+              type: close,
+              open: { type: "</", value: "</" },
+              tag: { type: "span", value: "span" },
+              close: { type: ">", value: ">" }
+            }
+          ]
+        },
+        {
+          type: "string",
+          value: { type: "string", value: "" },
+        },
+      ]
+    });
+  });
+
+
+  it('parses open close user defined directives', () => {
+    const tokenizer = new FreeMarkerTokenizer(/*html*/`
+      <@core.MyMacro arg1=arg1>
+        <span></span>
+      </@core.MyMacro>
+    `);
+    const tokens = tokenizer.tokenize({ index: false, ignoreWhitespace: true });
+    const parser = new FreeMarkerOptimisticParser(tokens);
+    const tree = parser.parse();
+    expect(tree).toEqual({
+      elements: [
+        {
+          type: "string",
+          value: { type: "string", value: "" },
+        },
+        {
+          close: {
+            type: ">",
+            value: ">",
           },
           "directive": "core.MyMacro",
-          "elements": [
+          elements: [
             {
-              "close": {
-                "type": ">",
-                "value": ">",
+              close: {
+                type: ">",
+                value: ">",
               },
-              "elements": [
+              elements: [
                 {
-                  "type": "string",
-                  "value": {
-                    "type": "string",
-                    "value": " arg1=arg1",
+                  type: "string",
+                  value: {
+                    type: "string",
+                    value: "arg1=arg1",
                   },
                 },
               ],
-              "open": {
-                "type": "<@",
-                "value": "<@",
+              open: {
+                type: "<@",
+                value: "<@",
               },
-              "tag": {
-                "type": "core.MyMacro",
-                "value": "core.MyMacro",
+              tag: {
+                type: "core.MyMacro",
+                value: "core.MyMacro",
               },
-              "type": "open",
+              type: open,
             },
             {
-              "type": "string",
-              "value": {
-                "type": "string",
-                "value": `<span></span>`,
-              },
+              type: "string",
+              value: { type: "string", value: "" },
             },
             {
-              "close": {
-                "type": ">",
-                "value": ">",
+              type: "html",
+              open: { type: "<", value: "<" },
+              tag: { type: "span", value: "span" },
+              tagName: "span",
+              close: { type: ">", value: ">" },
+              elements: [
+                {
+                  type: open,
+                  open: { type: "<", value: "<" },
+                  tag: { type: "span", value: "span" },
+                  close: { type: ">", value: ">" },
+                  elements: []
+                },
+                {
+                  type: close,
+                  open: { type: "</", value: "</" },
+                  tag: { type: "span", value: "span" },
+                  close: { type: ">", value: ">" }
+                }
+              ]
+            },
+            {
+              type: "string",
+              value: { type: "string", value: "" },
+            },
+            {
+              close: {
+                type: ">",
+                value: ">",
               },
-              "open": {
-                "type": "</@",
-                "value": "</@",
+              open: {
+                type: "</@",
+                value: "</@",
               },
-              "tag": {
-                "type": "core.MyMacro",
-                "value": "core.MyMacro",
+              tag: {
+                type: "core.MyMacro",
+                value: "core.MyMacro",
               },
-              "type": "close",
+              type: close,
             },
           ],
-          "open": {
-            "type": "<@",
-            "value": "<@",
+          open: {
+            type: "<@",
+            value: "<@",
           },
-          "tag": {
-            "type": "core.MyMacro",
-            "value": "core.MyMacro",
+          tag: {
+            type: "core.MyMacro",
+            value: "core.MyMacro",
           },
-          "type": "userdefined",
+          type: "userdefined",
+        },
+        {
+          type: "string",
+          value: { type: "string", value: "" },
         },
       ],
-      "type": "root",
+      type: root,
     });
   }, 2000);
 
   it('parses self closing user defined directives', () => {
     const tokenizer = new FreeMarkerTokenizer(`<@core.MyMacro arg1=arg1/>`);
-    const tokens = tokenizer.tokenize(false);
+    const tokens = tokenizer.tokenize({ index: false });
     const parser = new FreeMarkerOptimisticParser(tokens);
     const tree = parser.parse();
     expect(tree).toEqual({
-      "type": "root",
-      "elements": [
+      type: root,
+      elements: [
         {
-          "close": {
-            "type": "/>",
-            "value": "/>",
+          close: {
+            type: "/>",
+            value: "/>",
           },
           "directive": "core.MyMacro",
-          "elements": [
+          elements: [
             {
-              "type": "string",
-              "value": {
-                "type": "string",
-                "value": " arg1=arg1",
+              type: "string",
+              value: {
+                type: "string",
+                value: " arg1=arg1",
               },
             },
           ],
-          "open": {
-            "type": "<@",
-            "value": "<@",
+          open: {
+            type: "<@",
+            value: "<@",
           },
-          "selfClosing": true,
-          "tag": {
-            "type": "core.MyMacro",
-            "value": "core.MyMacro",
+          selfClosing: true,
+          tag: {
+            type: "core.MyMacro",
+            value: "core.MyMacro",
           },
-          "type": "userdefined",
+          type: "userdefined",
         },
       ],
     });
@@ -119,76 +234,111 @@ describe("FreeMarkerOptimisticParser", () => {
 
 
   it('parses open close directive', () => {
-    const tokenizer = new FreeMarkerTokenizer(`<#macro MyMacro arg1><span></span></#macro>`);
-    const tokens = tokenizer.tokenize(false);
+    const tokenizer = new FreeMarkerTokenizer(/*html*/`
+      <#macro MyMacro arg1>
+        <span></span>
+      </#macro>
+    `);
+    const tokens = tokenizer.tokenize({ index: false, ignoreWhitespace: true });
     const parser = new FreeMarkerOptimisticParser(tokens);
     const tree = parser.parse();
     expect(tree).toEqual({
-      "type": "root",
-      "elements": [
+      type: root,
+      elements: [
+        {
+          type: "string",
+          value: { type: "string", value: "" },
+        },
         {
           type: "directive",
           directive: "macro",
-          "close": {
-            "type": ">",
-            "value": ">",
+          close: {
+            type: ">",
+            value: ">",
           },
-          "elements": [
+          elements: [
             {
-              "close": {
-                "type": ">",
-                "value": ">",
+              close: {
+                type: ">",
+                value: ">",
               },
-              "elements": [
+              elements: [
                 {
-                  "type": "string",
-                  "value": {
-                    "type": "string",
-                    "value": " MyMacro arg1",
+                  type: "string",
+                  value: {
+                    type: "string",
+                    value: "MyMacro arg1",
                   },
                 },
               ],
-              "open": {
-                "type": "<#",
-                "value": "<#",
+              open: {
+                type: "<#",
+                value: "<#",
               },
-              "tag": {
-                "type": "macro",
-                "value": "macro",
+              tag: {
+                type: "macro",
+                value: "macro",
               },
-              "type": "open",
+              type: open,
             },
             {
-              "type": "string",
-              "value": {
-                "type": "string",
-                "value": "<span></span>",
-              },
+              type: "string",
+              value: { type: "string", value: "" },
             },
             {
-              "close": {
-                "type": ">",
-                "value": ">",
+              type: "html",
+              open: { type: "<", value: "<" },
+              tag: { type: "span", value: "span" },
+              tagName: "span",
+              close: { type: ">", value: ">" },
+              elements: [
+                {
+                  type: open,
+                  open: { type: "<", value: "<" },
+                  tag: { type: "span", value: "span" },
+                  close: { type: ">", value: ">" },
+                  elements: []
+                },
+                {
+                  type: close,
+                  open: { type: "</", value: "</" },
+                  tag: { type: "span", value: "span" },
+                  close: { type: ">", value: ">" }
+                }
+              ]
+            },
+            {
+              type: "string",
+              value: { type: "string", value: "" },
+            },
+            {
+              close: {
+                type: ">",
+                value: ">",
               },
-              "open": {
-                "type": "</#",
-                "value": "</#",
+              open: {
+                type: "</#",
+                value: "</#",
               },
-              "tag": {
-                "type": "macro",
-                "value": "macro",
+              tag: {
+                type: "macro",
+                value: "macro",
               },
-              "type": "close",
+              type: close,
             },
           ],
-          "open": {
-            "type": "<#",
-            "value": "<#",
+          open: {
+            type: "<#",
+            value: "<#",
           },
-          "tag": {
-            "type": "macro",
-            "value": "macro",
+          tag: {
+            type: "macro",
+            value: "macro",
           },
+        },
+        {
+          type: "string",
+          value: { type: "string", value: "" },
         },
       ],
     });
@@ -196,38 +346,38 @@ describe("FreeMarkerOptimisticParser", () => {
 
   it('parses self closing directive', () => {
     const tokenizer = new FreeMarkerTokenizer(`<#some_directive arg1/>`);
-    const tokens = tokenizer.tokenize(false);
+    const tokens = tokenizer.tokenize({ index: false });
     const parser = new FreeMarkerOptimisticParser(tokens);
     const tree = parser.parse();
     expect(tree).toEqual({
-      "type": "root",
-      "elements":
+      type: root,
+      elements:
         [
           {
-            "close": {
-              "type": "/>",
-              "value": "/>",
+            close: {
+              type: "/>",
+              value: "/>",
             },
             "directive": "some_directive",
-            "elements": [
+            elements: [
               {
-                "type": "string",
-                "value": {
-                  "type": "string",
-                  "value": " arg1",
+                type: "string",
+                value: {
+                  type: "string",
+                  value: " arg1",
                 },
               },
             ],
-            "open": {
-              "type": "<#",
-              "value": "<#",
+            open: {
+              type: "<#",
+              value: "<#",
             },
-            "selfClosing": true,
-            "tag": {
-              "type": "some_directive",
-              "value": "some_directive",
+            selfClosing: true,
+            tag: {
+              type: "some_directive",
+              value: "some_directive",
             },
-            "type": "directive",
+            type: "directive",
           },
         ],
     });
@@ -235,49 +385,49 @@ describe("FreeMarkerOptimisticParser", () => {
 
   it('parses comment', () => {
     const tokenizer = new FreeMarkerTokenizer(`<#-- comment -->`);
-    const tokens = tokenizer.tokenize(false);
+    const tokens = tokenizer.tokenize({ index: false });
     const parser = new FreeMarkerOptimisticParser(tokens);
     const tree = parser.parse();
     expect(tree).toEqual({
-      "elements": [
+      elements: [
         {
-          "close": {
-            "type": "-->",
-            "value": "-->",
+          close: {
+            type: "-->",
+            value: "-->",
           },
-          "elements": [
+          elements: [
             {
-              "type": "string",
-              "value": {
-                "type": "string",
-                "value": " comment ",
+              type: "string",
+              value: {
+                type: "string",
+                value: " comment ",
               },
             },
           ],
-          "open": {
-            "type": "<#--",
-            "value": "<#--",
+          open: {
+            type: "<#--",
+            value: "<#--",
           },
-          "selfClosing": true,
-          "type": "comment",
+          selfClosing: true,
+          type: "comment",
         },
       ],
-      "type": "root",
+      type: root,
     });
   }, 2000);
 
   it.skip('parses expression', () => {
     const tokenizer = new FreeMarkerTokenizer(`<span>\${myVar}</span>`);
-    const tokens = tokenizer.tokenize(false);
+    const tokens = tokenizer.tokenize({ index: false });
     const parser = new FreeMarkerOptimisticParser(tokens);
     const tree = parser.parse();
     expect(tree).toEqual({
-      "elements": [
+      elements: [
         {
-          "type": "string",
-          "value": {
-            "type": "string",
-            "value": "<span>",
+          type: "string",
+          value: {
+            type: "string",
+            value: "<span>",
           },
         },
         {
@@ -298,108 +448,108 @@ describe("FreeMarkerOptimisticParser", () => {
           ]
         },
         {
-          "type": "string",
-          "value": {
-            "type": "string",
-            "value": "</span>",
+          type: "string",
+          value: {
+            type: "string",
+            value: "</span>",
           },
         },
       ],
-      "type": "root",
+      type: root,
     });
   }, 2000);
 
   it.skip('poorly handles garbage', () => {
     const tokenizer = new FreeMarkerTokenizer(`<# div <@ -->`);
-    const tokens = tokenizer.tokenize(false);
+    const tokens = tokenizer.tokenize({ index: false });
     const parser = new FreeMarkerOptimisticParser(tokens);
     const tree = parser.parse();
     expect(parser.rejected).toEqual([]);
     expect(tree).toEqual({
-      "elements": [
+      elements: [
         {
-          "close": undefined,
+          close: undefined,
           "directive": " div <@ --",
-          "elements": [
+          elements: [
             {
-              "close": {
-                "type": ">",
-                "value": ">",
+              close: {
+                type: ">",
+                value: ">",
               },
-              "elements": [],
-              "open": {
-                "type": "<#",
-                "value": "<#",
+              elements: [],
+              open: {
+                type: "<#",
+                value: "<#",
               },
-              "tag": {
-                "type": "string",
-                "value": " div <@ --",
+              tag: {
+                type: "string",
+                value: " div <@ --",
               },
-              "type": "open",
+              type: open,
             },
             {
-              "close": undefined,
-              "open": undefined,
-              "tag": {
-                "type": "string",
-                "value": " div <@ --",
+              close: undefined,
+              open: undefined,
+              tag: {
+                type: "string",
+                value: " div <@ --",
               },
-              "type": "close",
+              type: close,
             },
           ],
-          "open": {
-            "type": "<#",
-            "value": "<#",
+          open: {
+            type: "<#",
+            value: "<#",
           },
-          "tag": {
-            "type": "string",
-            "value": " div <@ --",
+          tag: {
+            type: "string",
+            value: " div <@ --",
           },
-          "type": "directive",
+          type: "directive",
         },
       ],
-      "type": "root",
+      type: root,
     });
   }, 2000);
 
   it.skip('unopened var without recursing', () => {
     const tokenizer = new FreeMarkerTokenizer("}");
-    const tokens = tokenizer.tokenize(false);
+    const tokens = tokenizer.tokenize({ index: false });
     const parser = new FreeMarkerOptimisticParser(tokens);
     const tree = parser.parse();
     expect(parser.rejected).toEqual([]);
     expect(tree).toEqual({
-      "elements": [
+      elements: [
         {
-          "type": "string",
-          "value": {
-            "type": "string",
-            "value": "}",
+          type: "string",
+          value: {
+            type: "string",
+            value: "}",
           },
         },
       ],
-      "type": "root",
+      type: root,
     });
   }, 2000);
 
   it.skip('any unopened without recursing', () => {
     const closeBrace = "}";
     const tokenizer = new FreeMarkerTokenizer(/*html*/`${closeBrace}>--></#</@`);
-    const tokens = tokenizer.tokenize(false);
+    const tokens = tokenizer.tokenize({ index: false });
     const parser = new FreeMarkerOptimisticParser(tokens);
     const tree = parser.parse();
     expect(parser.rejected).toEqual([]);
     expect(tree).toEqual({
-      "elements": [
+      elements: [
         {
-          "type": "string",
-          "value": {
-            "type": "string",
-            "value": "}>--></#</@",
+          type: "string",
+          value: {
+            type: "string",
+            value: "}>--></#</@",
           },
         },
       ],
-      "type": "root",
+      type: root,
     });
   }, 2000);
 

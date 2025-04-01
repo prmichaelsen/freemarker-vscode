@@ -1,6 +1,6 @@
 import { Mutator } from '../visitors/Mutator';
 import { Parser } from "./Parser";
-import { CloseToken, CommentCloseToken, CommentOpenToken, DirectiveOpenCloseToken, DirectiveOpenOpenToken, Token, UserDefinedDirectiveOpenOpenToken } from "./Token";
+import { CloseToken, CommentCloseToken, CommentOpenToken, DirectiveOpenCloseToken, DirectiveOpenOpenToken, HtmlTagOpenCloseToken, HtmlTagOpenOpenToken, Token, UserDefinedDirectiveOpenOpenToken } from "./Token";
 import {
   closeClose,
   closeOpen,
@@ -10,12 +10,14 @@ import {
   directiveOpenOpen,
   expressionClose,
   expressionOpen,
+  htmlOpenClose,
+  htmlOpenOpen,
   isBodyRequired,
   string,
   userDefinedDirectiveOpenClose,
   userDefinedDirectiveOpenOpen
 } from './grammar';
-import { AnyDirectiveElement, BuiltInDirective, Directive, DirectiveElement, Element, ExpressionElement, RootElement, SelfClosingCommentElement, UserDefinedDirectiveElement } from './node/Element';
+import { AnyDirectiveElement, BuiltInDirective, Directive, DirectiveElement, Element, ExpressionElement, HtmlOpenTagElement, HtmlTag, HtmlTagElement, RootElement, SelfClosingCommentElement, UserDefinedDirectiveElement } from './node/Element';
 
 export class FreeMarkerOptimisticParser extends Parser {
 
@@ -73,6 +75,10 @@ export class FreeMarkerOptimisticParser extends Parser {
 
     if (this.match(userDefinedDirectiveOpenOpen)) {
       element = this.parseUserDefinedDirective() as Element;
+    } else
+    
+    if (this.match(htmlOpenOpen)) {
+      element = this.parseHtmlTag() as Element;
     } else
 
     if (this.match(commentOpen)) {
@@ -210,6 +216,59 @@ export class FreeMarkerOptimisticParser extends Parser {
       ];
     }
     return element as UserDefinedDirectiveElement;
+  }
+  
+  private parseHtmlTag(): HtmlTagElement {
+    const element: Partial<HtmlTagElement> = {};
+    if (this.match(
+      htmlOpenOpen
+    )) {
+      element.type = "html";
+      element.open = this.consume() as HtmlTagOpenOpenToken;
+      element.tag = this.consume();
+      element.tagName = element.tag.value as HtmlTag;
+      const properties: Element[] = [];
+      while (this.hasMore() && !(this.match(closeOpen) || this.match(closeClose))) {
+        properties.push({
+          type: 'string',
+          value: this.consume() as Token,
+        });
+      }
+      const isCloseOpen = this.match(closeOpen);
+      const isCloseClose = this.match(closeClose);
+      const _closeOpen = this.consume() as CloseToken;
+      const isTagMatch = this.lookAhead(htmlOpenClose);
+      if (isCloseClose || (isCloseOpen && !isTagMatch)) {
+        element.selfClosing = true;
+        element.close = _closeOpen;
+        element.elements = properties;
+        return element as HtmlTagElement;
+      }
+      const elements: Element[] = [];
+      while (this.hasMore() && !this.match(htmlOpenClose)) {
+        elements.push(this.parseElement());
+      }
+      const _openClose = this.consume() as HtmlTagOpenCloseToken;
+      const closeTag = this.consume();
+      element.close = this.consume() as CloseToken;
+      element.elements = [
+        { 
+          type: "open",
+          open: element.open,
+          tag: element.tag,
+          close: _closeOpen,
+          elements: properties,
+        },
+        ...elements,
+        { 
+          type: "close",
+          open: _openClose,
+          tag: closeTag,
+          close: element.close,
+        },
+      ];
+    }
+    return element as HtmlTagElement;
   }
 
   private parseComment(): SelfClosingCommentElement {

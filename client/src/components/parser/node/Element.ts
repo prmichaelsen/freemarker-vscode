@@ -1,4 +1,4 @@
-import { CloseToken, CommentCloseToken, CommentOpenToken, DirectiveOpenOpenToken, Token, UserDefinedDirectiveOpenOpenToken } from '../Token';
+import { CloseToken, CommentCloseToken, CommentOpenToken, DirectiveOpenOpenToken, HtmlTagOpenOpenToken, Token, UserDefinedDirectiveOpenOpenToken } from '../Token';
 import { closeClose, commentClose, commentOpen, directiveOpenOpen, string, userdefined, userDefinedDirectiveOpenClose, userDefinedDirectiveOpenOpen, value } from '../grammar';
 
 /** https://freemarker.apache.org/docs/ref_directive_list.html */
@@ -57,6 +57,7 @@ const directives = {
 
 export type BuiltInDirective = keyof typeof _directives;
 export type UserDefinedDirective = "userdefined";
+export type HtmlTag = string; // TODO
 export type Directive = keyof typeof directives;
 
 export type DirectiveElementType = "directive";
@@ -72,6 +73,24 @@ export interface OpenTagElement extends BaseElement {
   close: Token,
 }
 
+export interface OpenCloseElement extends BaseElement {
+  // type: Directive,
+  // directive: string,
+  selfClosing: false,
+  /** open, ie (<#)w+> */
+  open: Token,
+  /** close, ie <#w+(>) */
+  close: Token,
+  elements: [
+    /** tag open */
+    OpenTagElement,
+    /** tag inner content */
+    ...BaseElement[],
+    /** tag close */
+    CloseTagElement,
+  ],
+}
+
 export interface OpenDirectiveTagElement extends BaseElement {
   type: "open",
   open: DirectiveOpenOpenToken,
@@ -85,6 +104,14 @@ export interface OpenUserDefinedDirectiveTagElement extends BaseElement {
   open: UserDefinedDirectiveOpenOpenToken,
   tag: Token,
   close: CloseToken,
+  elements: Element[],
+}
+
+export interface HtmlOpenTagElement extends BaseElement {
+  type: "open",
+  open: Token,
+  tag: Token,
+  close: Token,
   elements: Element[],
 }
 
@@ -178,29 +205,48 @@ export interface SelfClosingCommentElement {
   elements: [Element],
 }
 
-
 export type SelfClosingElement =
   | SelfClosingDirectiveElement
   | SelfClosingUserDefinedDirectiveElement
   ;
 
-export interface OpenCloseElement extends BaseElement {
-  // type: Directive,
-  // directive: string,
+export interface SelfClosingHtmlTagElement {
+  type: "html",
+  tagName: string,
+  selfClosing: true,
+  /* ie <(\w+)/> */
+  tag: Token,
+  /** open, ie (<)\w+> */
+  open: HtmlTagOpenOpenToken,
+  /** close, ie <\w+(/>) */
+  close: CloseToken,
+  /** tag inner content */
+  elements: Element[],
+}
+
+export interface OpenCloseHtmlTagElement extends BaseElement {
+  type: "html",
+  tagName: string,
   selfClosing: false,
-  /** open, ie (<#)w+> */
-  open: Token,
-  /** close, ie <#w+(>) */
-  close: Token,
+  /* ie <(\w+)/> */
+  tag: Token,
+  /** open, ie (<)w+> */
+  open: HtmlTagOpenOpenToken,
+  /** close, ie <w+(>) */
+  close: CloseToken,
   elements: [
     /** tag open */
-    OpenTagElement,
+    HtmlOpenTagElement,
     /** tag inner content */
-    ...BaseElement[],
+    ...Element[],
     /** tag close */
     CloseTagElement,
   ],
 }
+
+export type HtmlTagElement = (
+  & (SelfClosingHtmlTagElement | OpenCloseHtmlTagElement)
+);
 
 export type AnyDirectiveElement = (
     & (SelfClosingElement | OpenCloseElement)
@@ -217,6 +263,7 @@ export interface ExpressionElement {
 export type TagElement = 
   | SelfClosingCommentElement
   | AnyDirectiveElement
+  | HtmlTagElement
   ;
 
 export interface StringElement extends BaseElement {
