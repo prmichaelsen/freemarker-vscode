@@ -3,7 +3,7 @@
   "displayName": "Free Marker VS Code",
   "description": "Language support for FreeMarker",
   "author": "prmichaelsen",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": {
     "url": "https://github.com/prmichaelsen/freemarker-vscode",
     "type": "git"
@@ -100,11 +100,6 @@
           "type": "boolean",
           "default": true,
           "description": "Enable the semantic token highlighting."
-        },
-        "freemarker-vscode.hover": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable hover previews."
         },
         "freemarker-vscode.telemetry": {
           "type": "boolean",

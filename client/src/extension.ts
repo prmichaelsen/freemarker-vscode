@@ -18,7 +18,6 @@ import { Metrics } from './components/telemetry/Metrics';
 import { Telemetry } from './components/telemetry/Telemetry';
 import { registerWatcher } from './lib/vscode/Watcher';
 import { FreeMarkerDiagnosticsProvider } from './providers/FreeMarkerDiagnosticsProvider';
-import { FreeMarkerHoverProvider } from './providers/FreeMarkerHoverProvider';
 import { FreeMarkerImplementationProvider } from './providers/FreeMarkerImplementationProvider';
 import { FreeMarkerReferenceProvider } from './providers/FreeMarkerReferenceProvider';
 import { FreeMarkerSemanticTokensProvider, legend } from './providers/FreeMarkerSemanticTokensProvider';
@@ -38,9 +37,9 @@ export function activate(context: ExtensionContext) {
     fileSystemProvider: workspace.getConfiguration('freemarker-language-server').get('file-system', false) as boolean,
     implementationProvider: workspace.getConfiguration('freemarker-language-server').get('go-to-implementations', true) as boolean,
     semanticTokensProvider: workspace.getConfiguration('freemarker-language-server').get('semantic-tokens', true) as boolean,
-    hoverProvider: workspace.getConfiguration('freemarker-language-server').get('hover', true) as boolean,
-    // completion is now an LSP server capability (see server/src/server.ts);
+    // Hover is now an LSP server capability (see server/src/server.ts);
     // the client flag is retired and the server is the source of truth.
+    // Completion was retired client-side in v0.1.0 for the same reason.
     debugParser: true,
     testAdapter: workspace.getConfiguration('freemarker-language-server').get('test-explorer', false) as boolean,
     telemetry: workspace.getConfiguration('freemarker-language-server').get('telemetry', false) as boolean,
@@ -109,11 +108,6 @@ export function activate(context: ExtensionContext) {
   if (feature.implementationProvider) {
     context.subscriptions.push(languages.registerImplementationProvider(
       documentFilters, new FreeMarkerImplementationProvider())
-    );
-  }
-  if (feature.hoverProvider) {
-    context.subscriptions.push(languages.registerHoverProvider(
-      documentFilters, new FreeMarkerHoverProvider())
     );
   }
   if (feature.semanticTokensProvider) {

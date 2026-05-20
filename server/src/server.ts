@@ -12,6 +12,8 @@ import {
   CompletionItemKind,
   CompletionList,
   CompletionParams,
+  Hover,
+  HoverParams,
   InsertTextFormat,
   MarkupKind,
   TextDocumentSyncKind,
@@ -25,6 +27,7 @@ import {
 } from 'vscode-languageserver-textdocument';
 
 import { DIRECTIVES, DirectiveRecord } from './catalog/directives';
+import { BUILTINS, BuiltinRecord } from './catalog/builtins';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -71,6 +74,11 @@ connection.onInitialize((params: InitializeParams) => {
         triggerCharacters: ['#', '?'],
         resolveProvider: false,
       },
+      // Phase 1 wake 2: catalog-fed hover lives on the server. The
+      // client-side FreeMarkerHoverProvider retired in this release;
+      // the LSP boundary is the source of truth for directive and
+      // built-in hover content.
+      hoverProvider: true,
     },
   };
   if (hasWorkspaceFolderCapability) {
@@ -272,6 +280,57 @@ function directiveCompletions(
   };
 }
 
+/**
+ * Build a CompletionItem for a built-in record. The user has typed `?`
+ * (the trigger); the snippet body picks up immediately after it.
+ */
+function builtinCompletionItem(b: BuiltinRecord): CompletionItem {
+  return {
+    label: b.name,
+    kind: CompletionItemKind.Function,
+    detail: b.signature,
+    documentation: {
+      kind: MarkupKind.Markdown,
+      value: `**\`${b.signature}\`**\n\n${b.summary}\n\n_Category: ${b.category}_`,
+    },
+    insertText: b.name,
+    insertTextFormat: InsertTextFormat.PlainText,
+    sortText: `0_${b.name}`,
+    filterText: b.name,
+    data: { kind: 'builtin', name: b.name, category: b.category },
+  };
+}
+
+/**
+ * Build the built-in completion list for the current cursor position.
+ * Fires when the cursor sits immediately after a `?` (the trigger) or
+ * inside a `?name` fragment the user is partway through typing.
+ * Returns `null` when the context does not look like a built-in
+ * invocation.
+ */
+function builtinCompletions(
+  doc: TextDocument,
+  params: CompletionParams,
+): CompletionList | null {
+  const line = doc.getText({
+    start: { line: params.position.line, character: 0 },
+    end: { line: params.position.line, character: params.position.character },
+  });
+  // Scan back to the nearest `?` on the line. Accept the context iff
+  // the run from `?` to cursor is empty or [A-Za-z_]+. Anything else
+  // (whitespace, punctuation, second `?`) means the cursor is no
+  // longer in a built-in fragment.
+  const opens = /\?([A-Za-z_]*)$/.test(line);
+  if (!opens) {
+    return null;
+  }
+
+  return {
+    isIncomplete: false,
+    items: BUILTINS.map(builtinCompletionItem),
+  };
+}
+
 connection.onCompletion((params: CompletionParams): CompletionList | null => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) {
@@ -281,8 +340,111 @@ connection.onCompletion((params: CompletionParams): CompletionList | null => {
   if (directives) {
     return directives;
   }
-  // Built-in (`?`) completion lands in a future wake — the trigger is
-  // already advertised in InitializeResult so the surface is ready.
+  const builtins = builtinCompletions(doc, params);
+  if (builtins) {
+    return builtins;
+  }
+  return null;
+});
+
+
+// ---------------------------------------------------------------------------
+// Hover — Phase 1 wake 2
+// ---------------------------------------------------------------------------
+
+/**
+ * Word-character class used by the hover word-extraction. FreeMarker
+ * directive names are all ASCII letters; built-in names additionally
+ * use underscores (e.g. `upper_case`, `iso_utc`). Digits never appear
+ * in either, so the class stays tight.
+ */
+const HOVER_WORD = /[A-Za-z_]/;
+
+/**
+ * Extract the symbol the user is hovering and the character that
+ * immediately precedes it (the trigger context). Returns `null` if
+ * the cursor is not on a word.
+ */
+function symbolAtCursor(
+  doc: TextDocument,
+  params: HoverParams,
+): { name: string; trigger: string; precedingTwo: string } | null {
+  const line = doc.getText({
+    start: { line: params.position.line, character: 0 },
+    // Read a wide chunk past the cursor so the symbol's right edge
+    // doesn't get cropped on long words near column zero.
+    end: { line: params.position.line, character: params.position.character + 256 },
+  });
+  const col = params.position.character;
+  if (col > line.length) {
+    return null;
+  }
+  // Walk left and right from the cursor while we're inside a word.
+  let start = col;
+  while (start > 0 && HOVER_WORD.test(line[start - 1] ?? '')) {
+    start--;
+  }
+  let end = col;
+  while (end < line.length && HOVER_WORD.test(line[end] ?? '')) {
+    end++;
+  }
+  if (start === end) {
+    return null;
+  }
+  const name = line.slice(start, end);
+  const trigger = start > 0 ? line[start - 1] : '';
+  const precedingTwo = line.slice(Math.max(0, start - 2), start);
+  return { name, trigger, precedingTwo };
+}
+
+/**
+ * Format the Markdown body for a catalog hit. Mirrors the layout used
+ * by completion items so completion + hover speak with one voice.
+ */
+function catalogHoverMarkdown(
+  signature: string,
+  summary: string,
+  category: string,
+): Hover {
+  return {
+    contents: {
+      kind: MarkupKind.Markdown,
+      value: `**\`${signature}\`**\n\n${summary}\n\n_Category: ${category}_`,
+    },
+  };
+}
+
+connection.onHover((params: HoverParams): Hover | null => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) {
+    return null;
+  }
+  const sym = symbolAtCursor(doc, params);
+  if (!sym) {
+    return null;
+  }
+
+  // Directive context: word follows `<#` or `</#`. We check the
+  // two-char preceding window so both `<#if` and `</#if` resolve.
+  const isDirectiveContext =
+    sym.precedingTwo === '<#' || sym.precedingTwo.endsWith('/#');
+  if (isDirectiveContext) {
+    const hit = DIRECTIVES.find((d) => d.name === sym.name);
+    if (hit) {
+      return catalogHoverMarkdown(hit.signature, hit.summary, hit.category);
+    }
+    return null;
+  }
+
+  // Built-in context: word follows a single `?`.
+  if (sym.trigger === '?') {
+    const hit = BUILTINS.find((b) => b.name === sym.name);
+    if (hit) {
+      return catalogHoverMarkdown(hit.signature, hit.summary, hit.category);
+    }
+    return null;
+  }
+
   return null;
 });
 
