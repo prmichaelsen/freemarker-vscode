@@ -39,7 +39,8 @@ export function activate(context: ExtensionContext) {
     implementationProvider: workspace.getConfiguration('freemarker-language-server').get('go-to-implementations', true) as boolean,
     semanticTokensProvider: workspace.getConfiguration('freemarker-language-server').get('semantic-tokens', true) as boolean,
     hoverProvider: workspace.getConfiguration('freemarker-language-server').get('hover', true) as boolean,
-    completionProvider: workspace.getConfiguration('freemarker-language-server').get('completion', false) as boolean,
+    // completion is now an LSP server capability (see server/src/server.ts);
+    // the client flag is retired and the server is the source of truth.
     debugParser: true,
     testAdapter: workspace.getConfiguration('freemarker-language-server').get('test-explorer', false) as boolean,
     telemetry: workspace.getConfiguration('freemarker-language-server').get('telemetry', false) as boolean,
