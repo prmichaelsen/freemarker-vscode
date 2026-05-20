@@ -3,7 +3,7 @@
   "displayName": "Free Marker VS Code",
   "description": "Language support for FreeMarker",
   "author": "prmichaelsen",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "repository": {
     "url": "https://github.com/prmichaelsen/freemarker-vscode",
     "type": "git"
@@ -123,6 +123,8 @@
     "lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
     "postinstall": "npm --prefix client install && npm --prefix server install",
     "test": "npm --prefix server test",
+    "test:unit": "npm --prefix server run test:unit",
+    "test:integration": "npm run integ",
     "getPackageVersion": "cat package.json | jq '.version' | tr -d '\"'",
     "getChangeLogVersion": "grep -oE '\\[v[0-9]+\\.[0-9]+\\.[0-9]+\\]' CHANGELOG.md | head -1 | tr -d '[v' | tr -d ']'",
     "isVersionSynced": "[[ $(npm run --silent getPackageVersion) == $(npm run --silent getChangeLogVersion) ]]",

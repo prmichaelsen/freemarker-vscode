@@ -9,10 +9,14 @@
 		"outDir": "out",
 		"rootDir": "src",
 		"types": [
-      "mocha",
-      "node"
-    ],
+			"node"
+		]
 	},
 	"include": ["src"],
-	"exclude": ["node_modules", ".vscode-test"]
+	"exclude": [
+		"node_modules",
+		".vscode-test",
+		"**/*.test.ts",
+		"**/*.spec.ts"
+	]
 }

@@ -151,7 +151,6 @@ export const BUILTINS: readonly BuiltinRecord[] = [
   { name: 'has_content', signature: 'any?has_content → boolean', summary: 'True if the operand is non-null and non-empty.', category: 'meta' },
   { name: 'default', signature: 'any?default(fallback) → any', summary: 'Return the operand if it has content, otherwise return the fallback.', category: 'meta' },
   { name: 'exists', signature: 'any?exists → boolean', summary: 'True if the operand is defined (deprecated; prefer ?has_content / ??).', category: 'meta' },
-  { name: 'eval', signature: 'string?eval → any', summary: 'Evaluate the operand string as a FreeMarker expression.', category: 'meta' },
   { name: 'new', signature: 'classname?new(args…) → any', summary: 'Instantiate the named class as a FreeMarker model (where the engine permits it).', category: 'meta' },
 ];
 
