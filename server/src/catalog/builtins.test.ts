@@ -20,7 +20,12 @@
  * @scry.entry.end
  */
 
-import { BUILTINS, builtinDocumentationUri, isKnownBuiltin } from './builtins';
+import {
+  BUILTINS,
+  BUILTIN_URL_OVERRIDES,
+  builtinDocumentationUri,
+  isKnownBuiltin,
+} from './builtins';
 
 describe('BUILTINS catalog', () => {
   test('every record has the required catalog shape', () => {
@@ -34,8 +39,13 @@ describe('BUILTINS catalog', () => {
       expect(typeof b.category).toBe('string');
       expect(b.category.length).toBeGreaterThan(0);
       expect(typeof b.documentationUri).toBe('string');
+      // Every URL points at a `ref_builtins_<slug>.html` page on the
+      // FreeMarker manual; the fragment is optional (deprecated
+      // builtins with no per-name anchor link to the page only) and
+      // when present is alphanumeric/underscore (the manual uses
+      // both `ref_builtin_<name>` and the `isType` mixed-case variant).
       expect(b.documentationUri).toMatch(
-        /^https:\/\/freemarker\.apache\.org\/docs\/ref_builtins_[a-z_]+\.html#ref_builtin_[a-z_]+$/,
+        /^https:\/\/freemarker\.apache\.org\/docs\/ref_builtins_[a-z_]+\.html(#[A-Za-z0-9_]+)?$/,
       );
     }
   });
@@ -103,7 +113,9 @@ describe('BUILTINS catalog', () => {
     expect(isKnownBuiltin('notABuiltin')).toBe(false);
   });
 
-  test('documentationUri maps category → page (singular `number` for numeric, `type_independent` for meta)', () => {
+  test('documentationUri maps category → page for non-overridden builtins', () => {
+    // Pick one non-overridden builtin per category and assert the
+    // default `ref_builtins_<page>.html#ref_builtin_<name>` shape.
     expect(builtinDocumentationUri('upper_case', 'string')).toBe(
       'https://freemarker.apache.org/docs/ref_builtins_string.html#ref_builtin_upper_case',
     );
@@ -120,22 +132,98 @@ describe('BUILTINS catalog', () => {
     expect(builtinDocumentationUri('then', 'boolean')).toBe(
       'https://freemarker.apache.org/docs/ref_builtins_boolean.html#ref_builtin_then',
     );
-    expect(builtinDocumentationUri('iso_utc', 'date')).toBe(
-      'https://freemarker.apache.org/docs/ref_builtins_date.html#ref_builtin_iso_utc',
-    );
     expect(builtinDocumentationUri('children', 'node')).toBe(
       'https://freemarker.apache.org/docs/ref_builtins_node.html#ref_builtin_children',
     );
-    // `meta` category → `type_independent` page slug
-    expect(builtinDocumentationUri('is_string', 'meta')).toBe(
-      'https://freemarker.apache.org/docs/ref_builtins_type_independent.html#ref_builtin_is_string',
+  });
+
+  test('documentationUri honors BUILTIN_URL_OVERRIDES for known drift cases', () => {
+    // Cross-page (lives on the `expert` reference page).
+    expect(builtinDocumentationUri('eval', 'string')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_expert.html#ref_builtin_eval',
     );
-    expect(builtinDocumentationUri('has_content', 'meta')).toBe(
-      'https://freemarker.apache.org/docs/ref_builtins_type_independent.html#ref_builtin_has_content',
+    expect(builtinDocumentationUri('interpret', 'string')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_expert.html#ref_builtin_interpret',
     );
-    // `new` lives on the `expert` page (override)
     expect(builtinDocumentationUri('new', 'meta')).toBe(
       'https://freemarker.apache.org/docs/ref_builtins_expert.html#ref_builtin_new',
     );
+    expect(builtinDocumentationUri('has_content', 'meta')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_expert.html#ref_builtin_has_content',
+    );
+
+    // Shared `ref_builtin_isType` anchor on expert for the is_* family.
+    expect(builtinDocumentationUri('is_string', 'meta')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_expert.html#ref_builtin_isType',
+    );
+    expect(builtinDocumentationUri('is_directive', 'meta')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_expert.html#ref_builtin_isType',
+    );
+
+    // Shared anchor on the category page.
+    expect(builtinDocumentationUri('min', 'sequence')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_sequence.html#ref_builtin_min_max',
+    );
+    expect(builtinDocumentationUri('max', 'sequence')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_sequence.html#ref_builtin_min_max',
+    );
+    expect(builtinDocumentationUri('round', 'numeric')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_number.html#ref_builtin_rounding',
+    );
+    expect(builtinDocumentationUri('floor', 'numeric')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_number.html#ref_builtin_rounding',
+    );
+    expect(builtinDocumentationUri('ceiling', 'numeric')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_number.html#ref_builtin_rounding',
+    );
+    expect(builtinDocumentationUri('int', 'numeric')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_number.html#ref_builtin_rounding',
+    );
+    expect(builtinDocumentationUri('string', 'numeric')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_number.html#ref_builtin_string_for_number',
+    );
+    expect(builtinDocumentationUri('date', 'date')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_date.html#ref_builtin_date_datetype',
+    );
+    expect(builtinDocumentationUri('time', 'date')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_date.html#ref_builtin_date_datetype',
+    );
+    expect(builtinDocumentationUri('datetime', 'date')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_date.html#ref_builtin_date_datetype',
+    );
+    expect(builtinDocumentationUri('iso_utc', 'date')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_date.html#ref_builtin_date_iso',
+    );
+    expect(builtinDocumentationUri('iso_local', 'date')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_date.html#ref_builtin_date_iso',
+    );
+
+    // Deprecated builtins with no per-name anchor — page-only URL.
+    expect(builtinDocumentationUri('default', 'meta')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_type_independent.html',
+    );
+    expect(builtinDocumentationUri('exists', 'meta')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_type_independent.html',
+    );
+  });
+
+  test('every BUILTIN_URL_OVERRIDES key names a catalog builtin', () => {
+    // Guards against an override row outliving the builtin it documents
+    // (or being typoed in either direction).
+    const names = new Set(BUILTINS.map((b) => b.name));
+    for (const key of Object.keys(BUILTIN_URL_OVERRIDES)) {
+      expect(names.has(key)).toBe(true);
+    }
+  });
+
+  test('every catalog builtin produces the URL its category + override imply', () => {
+    // Ensures the live `documentationUri` field on every record agrees
+    // with what `builtinDocumentationUri(name, category)` would build.
+    // This is the load-bearing invariant: hover and completion both
+    // read the field directly, so a record's URL must match what the
+    // builder + overrides resolve to.
+    for (const b of BUILTINS) {
+      expect(b.documentationUri).toBe(builtinDocumentationUri(b.name, b.category));
+    }
   });
 });

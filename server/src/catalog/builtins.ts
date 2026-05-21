@@ -10,12 +10,18 @@
  *   grouped by operand category (string, sequence, hash, numeric,
  *   boolean, date, node, meta). Each record carries name, signature,
  *   summary, category, and documentationUri (canonical
- *   freemarker.apache.org reference page with #ref_builtin_<name>
- *   anchor). Feeds the LSP completion provider when the user types
- *   `?` after an expression, and the hover provider. Also:
- *   FreeMarker built-ins, FTL built-ins, ?upper_case, ?size, ?html,
- *   ?date, built-in reference, LSP completion catalog,
- *   documentationUri, ref_builtin anchor, hover Reference link.
+ *   freemarker.apache.org reference page; anchor defaults to
+ *   `#ref_builtin_<name>` but is overridden per-builtin where the
+ *   manual exposes a shared, cross-page, or no-anchor target via the
+ *   `BUILTIN_URL_OVERRIDES` map). Feeds the LSP completion provider
+ *   when the user types `?` after an expression, and the hover
+ *   provider. Also: FreeMarker built-ins, FTL built-ins, ?upper_case,
+ *   ?size, ?html, ?date, built-in reference, LSP completion catalog,
+ *   documentationUri, ref_builtin anchor, hover Reference link,
+ *   BUILTIN_URL_OVERRIDES, anchor override map, anchor drift
+ *   remediation, ref_builtin_rounding, ref_builtin_min_max,
+ *   ref_builtin_date_datetype, ref_builtin_date_iso, ref_builtin_isType,
+ *   ref_builtins_expert.
  * rationale: Shared catalog so completion + hover stay in sync; documentationUri lets the hover Markdown link out to the canonical reference page anchor.
  * applies: editing FreeMarker built-in entries, wiring ? completion, surfacing built-in hover content, sequencing the Phase 1 built-in surface, refreshing canonical documentation URLs
  * seeded_questions:
@@ -52,9 +58,18 @@ export interface BuiltinRecord {
   /** Grouping for UX presentation. */
   readonly category: BuiltinCategory;
   /**
-   * Canonical freemarker.apache.org reference URL with the per-builtin
-   * `#ref_builtin_<name>` anchor. Always fully qualified; the hover
-   * Markdown emits it verbatim as a Reference link.
+   * Canonical freemarker.apache.org reference URL. The fragment is
+   * normally `#ref_builtin_<name>`, but the FreeMarker manual exposes
+   * a number of drift cases where multiple builtins share a single
+   * anchor on a parent page (e.g. `min`/`max` share
+   * `#ref_builtin_min_max`), where a builtin lives on a different page
+   * than its category map would predict (e.g. `eval`/`interpret` live
+   * on `ref_builtins_expert.html`), or where the builtin has no
+   * dedicated anchor and only a page-level link is meaningful
+   * (e.g. the deprecated `?default` / `?exists`). The drift map is
+   * `BUILTIN_URL_OVERRIDES`; the URL builder consults it first and
+   * falls through to the category default. The hover Markdown emits
+   * the resulting URL verbatim as a `[Reference](url)` link.
    */
   readonly documentationUri: string;
 }
@@ -68,10 +83,9 @@ const REF = 'https://freemarker.apache.org/docs';
  * Notes:
  *   - `numeric` maps to the singular `number` page name used by the
  *     FreeMarker manual.
- *   - `meta` maps to `type_independent` (catches is_X, has_content,
- *     default, exists). The single outlier (`new`, which the manual
- *     places in the expert page) is handled by an override in the
- *     record below rather than by splitting the category enum.
+ *   - `meta` maps to `type_independent`. Several `meta` builtins
+ *     (is_*, has_content, new, …) actually live on `expert` per the
+ *     manual; the override map below handles those.
  */
 const CATEGORY_TO_PAGE_SLUG: Record<BuiltinCategory, string> = {
   string: 'string',
@@ -85,19 +99,93 @@ const CATEGORY_TO_PAGE_SLUG: Record<BuiltinCategory, string> = {
 };
 
 /**
- * Build the canonical reference URL for a builtin. Exported so tests
- * can assert the URL shape without hand-typing 81 absolute URLs.
+ * Per-builtin override for the documentation URL. Each key is a
+ * builtin name; the value names the manual's page slug and the
+ * fragment anchor (or `null` if the manual exposes no per-builtin
+ * anchor and the URL should link to the page only).
+ *
+ * Curated by HEAD + anchor audit of the live FreeMarker manual on
+ * 2026-05-21. Cases captured here:
+ *
+ *   - **Cross-page**: builtins the manual documents on a different
+ *     page than the category default would predict.
+ *       - `eval`, `interpret`, `new`, `has_content`,
+ *         `is_string`/`is_number`/`is_boolean`/`is_date`/
+ *         `is_sequence`/`is_hash`/`is_macro`/`is_directive`
+ *         all live on `ref_builtins_expert.html`.
+ *   - **Shared anchor**: builtins that share a single anchor on the
+ *     category page.
+ *       - `min`/`max` → `#ref_builtin_min_max` on sequence.
+ *       - `round`/`floor`/`ceiling`/`int` → `#ref_builtin_rounding`
+ *         on number.
+ *       - `string` (numeric) → `#ref_builtin_string_for_number`.
+ *       - `date`/`time`/`datetime` → `#ref_builtin_date_datetype`.
+ *       - `iso_utc`/`iso_local` → `#ref_builtin_date_iso`.
+ *       - all `is_*` builtins → `#ref_builtin_isType` on expert.
+ *   - **No anchor**: deprecated builtins with no per-name anchor.
+ *       - `default`/`exists` link to the type_independent page only.
+ */
+export interface BuiltinUrlOverride {
+  /** Page slug (used as `ref_builtins_<slug>.html`). */
+  readonly page: string;
+  /** Fragment anchor (without the `#`), or `null` to emit no fragment. */
+  readonly anchor: string | null;
+}
+
+export const BUILTIN_URL_OVERRIDES: Readonly<Record<string, BuiltinUrlOverride>> = {
+  // ---- Cross-page (live on the `expert` page) ----
+  eval: { page: 'expert', anchor: 'ref_builtin_eval' },
+  interpret: { page: 'expert', anchor: 'ref_builtin_interpret' },
+  new: { page: 'expert', anchor: 'ref_builtin_new' },
+  has_content: { page: 'expert', anchor: 'ref_builtin_has_content' },
+  // The is_* family shares a single `ref_builtin_isType` anchor.
+  is_string: { page: 'expert', anchor: 'ref_builtin_isType' },
+  is_number: { page: 'expert', anchor: 'ref_builtin_isType' },
+  is_boolean: { page: 'expert', anchor: 'ref_builtin_isType' },
+  is_date: { page: 'expert', anchor: 'ref_builtin_isType' },
+  is_sequence: { page: 'expert', anchor: 'ref_builtin_isType' },
+  is_hash: { page: 'expert', anchor: 'ref_builtin_isType' },
+  is_macro: { page: 'expert', anchor: 'ref_builtin_isType' },
+  is_directive: { page: 'expert', anchor: 'ref_builtin_isType' },
+
+  // ---- Shared anchor on the category page ----
+  min: { page: 'sequence', anchor: 'ref_builtin_min_max' },
+  max: { page: 'sequence', anchor: 'ref_builtin_min_max' },
+  round: { page: 'number', anchor: 'ref_builtin_rounding' },
+  floor: { page: 'number', anchor: 'ref_builtin_rounding' },
+  ceiling: { page: 'number', anchor: 'ref_builtin_rounding' },
+  int: { page: 'number', anchor: 'ref_builtin_rounding' },
+  // `?string` on a number resolves to a number-page formatting anchor.
+  // (The manual uses suffixed anchors per source type:
+  // `_for_number` here, `_for_boolean`/`_for_date`/`_for_string`
+  // elsewhere. Our catalog carries only the numeric `string` entry.)
+  string: { page: 'number', anchor: 'ref_builtin_string_for_number' },
+  date: { page: 'date', anchor: 'ref_builtin_date_datetype' },
+  time: { page: 'date', anchor: 'ref_builtin_date_datetype' },
+  datetime: { page: 'date', anchor: 'ref_builtin_date_datetype' },
+  iso_utc: { page: 'date', anchor: 'ref_builtin_date_iso' },
+  iso_local: { page: 'date', anchor: 'ref_builtin_date_iso' },
+
+  // ---- No per-name anchor (deprecated; link to page only) ----
+  default: { page: 'type_independent', anchor: null },
+  exists: { page: 'type_independent', anchor: null },
+};
+
+/**
+ * Build the canonical reference URL for a builtin. Consults the
+ * BUILTIN_URL_OVERRIDES map first; falls through to the category
+ * default. Exported so tests can assert the URL shape without
+ * hand-typing 81 absolute URLs.
  */
 export function builtinDocumentationUri(
   name: string,
   category: BuiltinCategory,
 ): string {
-  // The `new` builtin lives on the "expert" page in the manual rather
-  // than `type_independent`; everything else follows the category map.
-  if (category === 'meta' && name === 'new') {
-    return `${REF}/ref_builtins_expert.html#ref_builtin_new`;
-  }
-  return `${REF}/ref_builtins_${CATEGORY_TO_PAGE_SLUG[category]}.html#ref_builtin_${name}`;
+  const override = BUILTIN_URL_OVERRIDES[name];
+  const pageSlug = override?.page ?? CATEGORY_TO_PAGE_SLUG[category];
+  const anchor = override !== undefined ? override.anchor : `ref_builtin_${name}`;
+  const base = `${REF}/ref_builtins_${pageSlug}.html`;
+  return anchor === null ? base : `${base}#${anchor}`;
 }
 
 const B = (
