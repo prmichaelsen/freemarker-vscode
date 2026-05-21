@@ -3,7 +3,7 @@
   "displayName": "Free Marker VS Code",
   "description": "Language support for FreeMarker",
   "author": "prmichaelsen",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "repository": {
     "url": "https://github.com/prmichaelsen/freemarker-vscode",
     "type": "git"

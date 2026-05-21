@@ -11,17 +11,24 @@ export let editor: vscode.TextEditor;
 export let documentEol: string;
 export let platformEol: string;
 
+let extensionActivated = false;
+
 /**
- * Activates the vscode.lsp-sample extension
+ * Activates the freemarker-vscode extension (idempotent) and opens
+ * the given fixture document. The 2000ms post-activation sleep runs
+ * only on the first call across the whole test run — subsequent
+ * fixture opens are fast.
  */
 export async function activate(docUri: vscode.Uri) {
-	// The extensionId is `publisher.name` from package.json
 	const ext = vscode.extensions.getExtension("prmichaelsen.freemarker-vscode")!;
 	await ext.activate();
+	if (!extensionActivated) {
+		await sleep(2000); // Wait for LSP server activation on first open
+		extensionActivated = true;
+	}
 	try {
 		doc = await vscode.workspace.openTextDocument(docUri);
 		editor = await vscode.window.showTextDocument(doc);
-		await sleep(2000); // Wait for server activation
 	} catch (e) {
 		console.error(e);
 	}
@@ -50,4 +57,26 @@ export function toRange(sLine: number, sChar: number, eLine: number, eChar: numb
 	const start = new vscode.Position(sLine, sChar);
 	const end = new vscode.Position(eLine, eChar);
 	return new vscode.Range(start, end);
+}
+
+/**
+ * Find the position of `needle` within line `lineNo` of `text`, then
+ * return a vscode.Position pointing to the middle character of the
+ * match. Throws if `needle` is not found on that line.
+ *
+ * Used by hover/completion tests to assert against a fixture without
+ * hand-counting column numbers — the test names a directive / builtin
+ * name and the helper locates it.
+ */
+export function findPos(text: string, lineNo: number, needle: string): vscode.Position {
+	const lines = text.split('\n');
+	const line = lines[lineNo];
+	if (line === undefined) {
+		throw new Error(`fixture has no line ${lineNo} (has ${lines.length})`);
+	}
+	const col = line.indexOf(needle);
+	if (col < 0) {
+		throw new Error(`needle '${needle}' not on line ${lineNo}: ${JSON.stringify(line)}`);
+	}
+	return new vscode.Position(lineNo, col + Math.floor(needle.length / 2));
 }
