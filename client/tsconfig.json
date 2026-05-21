@@ -6,7 +6,9 @@
 		"outDir": "out",
 		"rootDir": "src",
 		"sourceMap": true,
+		"skipLibCheck": true,
+		"types": ["node"],
 	},
 	"include": ["src"],
-	"exclude": ["node_modules", ".vscode-test", "../../node_modules"]
+	"exclude": ["node_modules", ".vscode-test", "../../node_modules", "**/*.test.ts", "**/*.spec.ts"]
 }

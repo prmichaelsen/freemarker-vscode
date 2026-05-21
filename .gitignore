@@ -2,9 +2,11 @@
 *.expected.json
 *.vsix
 .vscode-test
+agent/
 build
 client/server
 coverage
 node_modules
 out
+release/
 resources/config.json

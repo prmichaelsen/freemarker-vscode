@@ -111,7 +111,7 @@
   },
   "scripts": {
     "release": "sh ./scripts/release.sh",
-    "vscode:prepublish": "npm run test && npm run compile && npm run integ",
+    "vscode:prepublish": "npm run test && npm run compile && (test \"$SKIP_INTEG\" = \"1\" && echo 'SKIP_INTEG=1 — skipping integration tests' || npm run integ)",
     "package": "yes | vsce package --out release",
     "debug": "npm run ts-node -- -r ts-node/register",
     "ts-node": "ts-node",
