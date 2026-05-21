@@ -167,11 +167,11 @@ Toggleable via the `freemarker-vscode.go-to-reference` setting
 
 ### Commands
 
-Three commands are contributed to the command palette:
+One command is contributed to the command palette:
 
-- `FreeMarker: Add file` — `freemarker-vscode.addFile`.
-- `FreeMarker: Debug parser` — `freemarker-vscode.debugParser`.
-- `FreeMarker: Check for updates` — `freemarker-vscode.checkForUpdates`.
+- `FreeMarker: Debug parser` — `freemarker-vscode.debugParser`. Opens
+  the parser-output channel and prints the AST for the active `.ftl`
+  buffer; primarily a development / bug-report aid.
 
 ---
 

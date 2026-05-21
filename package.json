@@ -3,7 +3,7 @@
   "displayName": "Free Marker VS Code",
   "description": "Language support for FreeMarker",
   "author": "prmichaelsen",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "repository": {
     "url": "https://github.com/prmichaelsen/freemarker-vscode",
     "type": "git"
@@ -61,16 +61,8 @@
     ],
     "commands": [
       {
-        "command": "freemarker-vscode.addFile",
-        "title": "FreeMarker: Add file"
-      },
-      {
         "command": "freemarker-vscode.debugParser",
         "title": "FreeMarker: Debug parser"
-      },
-      {
-        "command": "freemarker-vscode.checkForUpdates",
-        "title": "FreeMarker: Check for updates"
       }
     ],
     "configuration": {
