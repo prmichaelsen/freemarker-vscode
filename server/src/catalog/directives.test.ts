@@ -119,5 +119,17 @@ describe('DIRECTIVES catalog', () => {
     expect(find('lt')).toBe(find('t'));
     expect(find('rt')).toBe(find('t'));
     expect(find('nt')).toBe(find('t'));
+
+    // <#list> family — break/continue share the list page (loop-control
+    // is documented inside the list directive's reference page).
+    expect(find('break')).toBe(find('list'));
+    expect(find('continue')).toBe(find('list'));
+
+    // <#macro> family — nested shares the macro page.
+    expect(find('nested')).toBe(find('macro'));
+
+    // <#function> family — return shares the function page (the
+    // FreeMarker manual pairs them in the page h1 "function, return").
+    expect(find('return')).toBe(find('function'));
   });
 });

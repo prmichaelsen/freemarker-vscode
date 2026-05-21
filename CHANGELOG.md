@@ -1,3 +1,13 @@
+#### [v0.1.5] fix: Repair four 404 `documentationUri` values — `break`, `continue`, `nested`, `return`
+- HEAD-check audit of the 33 unique reference pages introduced in v0.1.4 surfaced four 404s. The FreeMarker manual documents these four directives on sibling pages rather than their own pages.
+- `break`, `continue` → `ref_directive_list.html` (loop-control is documented inside `<#list>`'s reference page).
+- `nested` → `ref_directive_macro.html` (the page h1 reads `macro, nested, return`; `<#nested>` has no dedicated page).
+- `return` → `ref_directive_function.html` (the page h1 reads `function, return`; `<#return>` is documented under `<#function>`).
+- Sibling-URL invariants added to the existing `directives.test.ts` sibling-share `test()` block for all four mappings (jest test count stays at 27 — the assertions land inside the existing per-block test); tsc clean.
+- Catalog header doc comment updated to enumerate the new sibling-share rules alongside the existing four families (`elseif`/`else`, `case`/`default`, `recover`, `t`/`lt`/`rt`/`nt`).
+- No behavior change for hover/completion plumbing — only catalog data fixed. Users on v0.1.4 see `[Reference](url)` links that 404; v0.1.5 fixes those four to the canonical sibling pages.
+- Out of scope for v0.1.5 (known limitation): per-anchor verification across the 105 builtin `#ref_builtin_<name>` fragments. An audit during the v0.1.5 cycle confirmed that all 29 parent pages return 200, but several builtin anchors don't match the FreeMarker manual's actual scheme (e.g. `round`/`floor`/`ceiling` collapse under `#ref_builtin_rounding`; `date`/`time`/`datetime`/`iso_utc`/`iso_local` use `ref_builtin_date_*` suffixed forms; `eval`/`interpret`/`is_*`/`has_content`/`default`/`exists` are documented on `ref_builtins_expert.html` rather than their category pages). Users following these links land on the correct page but not the correct subsection. Remediation is a follow-on wake — either per-builtin anchor mapping or fragment-drop with page-only links.
+
 #### [v0.1.4] feat: Catalog `documentationUri` + hover/completion Reference link
 - Both `DirectiveRecord` and `BuiltinRecord` gain a required `documentationUri` field carrying the canonical `freemarker.apache.org/docs/ref_directive_*.html` / `ref_builtins_*.html#ref_builtin_*` URL for each entry.
 - All 33 directive records and all 81 builtin records populated. Siblings (`elseif`/`else` → `ref_directive_if.html`; `case`/`default` → `ref_directive_switch.html`; `recover` → `ref_directive_attempt.html`; `t`/`lt`/`rt`/`nt` → `ref_directive_t.html`) share their parent's reference page.

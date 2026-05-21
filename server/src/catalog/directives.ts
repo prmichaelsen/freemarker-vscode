@@ -56,7 +56,9 @@ export interface DirectiveRecord {
   /**
    * Canonical freemarker.apache.org reference page for this directive.
    * Sibling directives that share a parent's documentation page (e.g.
-   * `elseif`/`else` → `ref_directive_if.html`) point to that parent.
+   * `elseif`/`else` → `ref_directive_if.html`, `break`/`continue` →
+   * `ref_directive_list.html`, `nested` → `ref_directive_macro.html`,
+   * `return` → `ref_directive_function.html`) point to that parent.
    * Always a fully-qualified absolute URL — the hover Markdown emits
    * it verbatim as a Reference link.
    */
@@ -135,7 +137,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Exit the nearest enclosing <#list> or <#switch> body.',
     category: 'flow-control',
     shape: 'inline',
-    documentationUri: `${REF}/ref_directive_break.html`,
+    documentationUri: `${REF}/ref_directive_list.html`,
   },
   {
     name: 'continue',
@@ -143,7 +145,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Skip to the next iteration of the nearest <#list> body.',
     category: 'flow-control',
     shape: 'inline',
-    documentationUri: `${REF}/ref_directive_continue.html`,
+    documentationUri: `${REF}/ref_directive_list.html`,
   },
   {
     name: 'return',
@@ -151,7 +153,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Return from the enclosing <#function> or <#macro>.',
     category: 'flow-control',
     shape: 'inline',
-    documentationUri: `${REF}/ref_directive_return.html`,
+    documentationUri: `${REF}/ref_directive_function.html`,
   },
   {
     name: 'stop',
@@ -209,7 +211,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Render the nested content passed to the enclosing <#macro>.',
     category: 'definition',
     shape: 'inline',
-    documentationUri: `${REF}/ref_directive_nested.html`,
+    documentationUri: `${REF}/ref_directive_macro.html`,
   },
 
   // Inclusion
