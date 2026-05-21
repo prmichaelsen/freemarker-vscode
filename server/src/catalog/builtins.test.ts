@@ -20,7 +20,7 @@
  * @scry.entry.end
  */
 
-import { BUILTINS, isKnownBuiltin } from './builtins';
+import { BUILTINS, builtinDocumentationUri, isKnownBuiltin } from './builtins';
 
 describe('BUILTINS catalog', () => {
   test('every record has the required catalog shape', () => {
@@ -33,6 +33,10 @@ describe('BUILTINS catalog', () => {
       expect(b.summary.length).toBeGreaterThan(0);
       expect(typeof b.category).toBe('string');
       expect(b.category.length).toBeGreaterThan(0);
+      expect(typeof b.documentationUri).toBe('string');
+      expect(b.documentationUri).toMatch(
+        /^https:\/\/freemarker\.apache\.org\/docs\/ref_builtins_[a-z_]+\.html#ref_builtin_[a-z_]+$/,
+      );
     }
   });
 
@@ -97,5 +101,41 @@ describe('BUILTINS catalog', () => {
     expect(isKnownBuiltin('upper_case')).toBe(true);
     expect(isKnownBuiltin('size')).toBe(true);
     expect(isKnownBuiltin('notABuiltin')).toBe(false);
+  });
+
+  test('documentationUri maps category → page (singular `number` for numeric, `type_independent` for meta)', () => {
+    expect(builtinDocumentationUri('upper_case', 'string')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_string.html#ref_builtin_upper_case',
+    );
+    expect(builtinDocumentationUri('size', 'sequence')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_sequence.html#ref_builtin_size',
+    );
+    expect(builtinDocumentationUri('keys', 'hash')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_hash.html#ref_builtin_keys',
+    );
+    // `numeric` category → `number` page slug
+    expect(builtinDocumentationUri('abs', 'numeric')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_number.html#ref_builtin_abs',
+    );
+    expect(builtinDocumentationUri('then', 'boolean')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_boolean.html#ref_builtin_then',
+    );
+    expect(builtinDocumentationUri('iso_utc', 'date')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_date.html#ref_builtin_iso_utc',
+    );
+    expect(builtinDocumentationUri('children', 'node')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_node.html#ref_builtin_children',
+    );
+    // `meta` category → `type_independent` page slug
+    expect(builtinDocumentationUri('is_string', 'meta')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_type_independent.html#ref_builtin_is_string',
+    );
+    expect(builtinDocumentationUri('has_content', 'meta')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_type_independent.html#ref_builtin_has_content',
+    );
+    // `new` lives on the `expert` page (override)
+    expect(builtinDocumentationUri('new', 'meta')).toBe(
+      'https://freemarker.apache.org/docs/ref_builtins_expert.html#ref_builtin_new',
+    );
   });
 });

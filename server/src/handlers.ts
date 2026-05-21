@@ -152,7 +152,7 @@ export function directiveCompletionItem(d: DirectiveRecord): CompletionItem {
     detail: d.signature,
     documentation: {
       kind: MarkupKind.Markdown,
-      value: `**\`${d.signature}\`**\n\n${d.summary}\n\n_Category: ${d.category}_`,
+      value: `**\`${d.signature}\`**\n\n${d.summary}\n\n_Category: ${d.category}_\n\n[Reference](${d.documentationUri})`,
     },
     insertText,
     insertTextFormat: InsertTextFormat.Snippet,
@@ -201,7 +201,7 @@ export function builtinCompletionItem(b: BuiltinRecord): CompletionItem {
     detail: b.signature,
     documentation: {
       kind: MarkupKind.Markdown,
-      value: `**\`${b.signature}\`**\n\n${b.summary}\n\n_Category: ${b.category}_`,
+      value: `**\`${b.signature}\`**\n\n${b.summary}\n\n_Category: ${b.category}_\n\n[Reference](${b.documentationUri})`,
     },
     insertText: b.name,
     insertTextFormat: InsertTextFormat.PlainText,
@@ -309,16 +309,19 @@ export function symbolAtCursor(
 /**
  * Format the Markdown body for a catalog hit. Mirrors the layout used
  * by completion items so completion + hover speak with one voice.
+ * The trailing `[Reference](url)` line links out to the canonical
+ * freemarker.apache.org reference page for the symbol.
  */
 export function catalogHoverMarkdown(
   signature: string,
   summary: string,
   category: string,
+  documentationUri: string,
 ): Hover {
   return {
     contents: {
       kind: MarkupKind.Markdown,
-      value: `**\`${signature}\`**\n\n${summary}\n\n_Category: ${category}_`,
+      value: `**\`${signature}\`**\n\n${summary}\n\n_Category: ${category}_\n\n[Reference](${documentationUri})`,
     },
   };
 }
@@ -342,7 +345,12 @@ export function resolveHover(
   if (isDirectiveContext) {
     const hit = DIRECTIVES.find((d) => d.name === sym.name);
     if (hit) {
-      return catalogHoverMarkdown(hit.signature, hit.summary, hit.category);
+      return catalogHoverMarkdown(
+        hit.signature,
+        hit.summary,
+        hit.category,
+        hit.documentationUri,
+      );
     }
     return null;
   }
@@ -350,7 +358,12 @@ export function resolveHover(
   if (sym.trigger === '?') {
     const hit = BUILTINS.find((b) => b.name === sym.name);
     if (hit) {
-      return catalogHoverMarkdown(hit.signature, hit.summary, hit.category);
+      return catalogHoverMarkdown(
+        hit.signature,
+        hit.summary,
+        hit.category,
+        hit.documentationUri,
+      );
     }
     return null;
   }

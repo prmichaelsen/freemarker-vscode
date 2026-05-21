@@ -3,24 +3,29 @@
  * kind: pattern
  * status: active
  * weight: 0.7
- * tags: ["topic:freemarker", "freemarker", "topic:lsp", "lsp", "topic:catalog", "catalog", "freemarker-vscode", "builtins", "topic:builtins"]
+ * tags: ["topic:freemarker", "freemarker", "topic:lsp", "lsp", "topic:catalog", "catalog", "freemarker-vscode", "builtins", "topic:builtins", "topic:documentation-uri", "documentation-uri"]
  * summary: >
  *   Catalog of FreeMarker built-in functions (the `?name` suffix
  *   operators). Sourced from the FreeMarker reference manual,
  *   grouped by operand category (string, sequence, hash, numeric,
- *   boolean, date, node, meta). Feeds the LSP completion provider
- *   when the user types `?` after an expression, and the hover
- *   provider once that wires through. Also: FreeMarker built-ins,
- *   FTL built-ins, ?upper_case, ?size, ?html, ?date, built-in
- *   reference, LSP completion catalog.
- * rationale: Shared catalog so completion + hover stay in sync across the built-in surface.
- * applies: editing FreeMarker built-in entries, wiring ? completion, surfacing built-in hover content, sequencing the Phase 1 built-in surface
+ *   boolean, date, node, meta). Each record carries name, signature,
+ *   summary, category, and documentationUri (canonical
+ *   freemarker.apache.org reference page with #ref_builtin_<name>
+ *   anchor). Feeds the LSP completion provider when the user types
+ *   `?` after an expression, and the hover provider. Also:
+ *   FreeMarker built-ins, FTL built-ins, ?upper_case, ?size, ?html,
+ *   ?date, built-in reference, LSP completion catalog,
+ *   documentationUri, ref_builtin anchor, hover Reference link.
+ * rationale: Shared catalog so completion + hover stay in sync; documentationUri lets the hover Markdown link out to the canonical reference page anchor.
+ * applies: editing FreeMarker built-in entries, wiring ? completion, surfacing built-in hover content, sequencing the Phase 1 built-in surface, refreshing canonical documentation URLs
  * seeded_questions:
  *   - "What FreeMarker built-in functions does the extension know about?"
  *   - "Where is the FTL ?builtin reference catalog?"
  *   - "FreeMarker string built-ins"
  *   - "FreeMarker sequence built-ins"
  *   - "?upper_case ?size ?html ?date"
+ *   - "freemarker-vscode builtin documentationUri"
+ *   - "ref_builtin_<name> anchor"
  * @scry.entry.end
  */
 
@@ -46,7 +51,67 @@ export interface BuiltinRecord {
   readonly summary: string;
   /** Grouping for UX presentation. */
   readonly category: BuiltinCategory;
+  /**
+   * Canonical freemarker.apache.org reference URL with the per-builtin
+   * `#ref_builtin_<name>` anchor. Always fully qualified; the hover
+   * Markdown emits it verbatim as a Reference link.
+   */
+  readonly documentationUri: string;
 }
+
+/** Base URL for the FreeMarker reference manual. */
+const REF = 'https://freemarker.apache.org/docs';
+
+/**
+ * Map a BuiltinCategory to its FreeMarker reference page slug.
+ *
+ * Notes:
+ *   - `numeric` maps to the singular `number` page name used by the
+ *     FreeMarker manual.
+ *   - `meta` maps to `type_independent` (catches is_X, has_content,
+ *     default, exists). The single outlier (`new`, which the manual
+ *     places in the expert page) is handled by an override in the
+ *     record below rather than by splitting the category enum.
+ */
+const CATEGORY_TO_PAGE_SLUG: Record<BuiltinCategory, string> = {
+  string: 'string',
+  sequence: 'sequence',
+  hash: 'hash',
+  numeric: 'number',
+  boolean: 'boolean',
+  date: 'date',
+  node: 'node',
+  meta: 'type_independent',
+};
+
+/**
+ * Build the canonical reference URL for a builtin. Exported so tests
+ * can assert the URL shape without hand-typing 81 absolute URLs.
+ */
+export function builtinDocumentationUri(
+  name: string,
+  category: BuiltinCategory,
+): string {
+  // The `new` builtin lives on the "expert" page in the manual rather
+  // than `type_independent`; everything else follows the category map.
+  if (category === 'meta' && name === 'new') {
+    return `${REF}/ref_builtins_expert.html#ref_builtin_new`;
+  }
+  return `${REF}/ref_builtins_${CATEGORY_TO_PAGE_SLUG[category]}.html#ref_builtin_${name}`;
+}
+
+const B = (
+  name: string,
+  signature: string,
+  summary: string,
+  category: BuiltinCategory,
+): BuiltinRecord => ({
+  name,
+  signature,
+  summary,
+  category,
+  documentationUri: builtinDocumentationUri(name, category),
+});
 
 /**
  * Phase 1 built-in surface. Not exhaustive of the entire FreeMarker
@@ -57,101 +122,101 @@ export interface BuiltinRecord {
  */
 export const BUILTINS: readonly BuiltinRecord[] = [
   // ---- String built-ins ----
-  { name: 'upper_case', signature: 'string?upper_case → string', summary: 'Convert the operand string to upper case.', category: 'string' },
-  { name: 'lower_case', signature: 'string?lower_case → string', summary: 'Convert the operand string to lower case.', category: 'string' },
-  { name: 'cap_first', signature: 'string?cap_first → string', summary: 'Capitalize the first letter of the operand string.', category: 'string' },
-  { name: 'uncap_first', signature: 'string?uncap_first → string', summary: 'Lower-case the first letter of the operand string.', category: 'string' },
-  { name: 'capitalize', signature: 'string?capitalize → string', summary: 'Capitalize the first letter of each word in the operand string.', category: 'string' },
-  { name: 'trim', signature: 'string?trim → string', summary: 'Remove leading and trailing whitespace from the operand string.', category: 'string' },
-  { name: 'length', signature: 'string?length → number', summary: 'Number of characters in the operand string.', category: 'string' },
-  { name: 'index_of', signature: 'string?index_of(sub, from?) → number', summary: 'Position of the first occurrence of a substring, or -1 if absent.', category: 'string' },
-  { name: 'last_index_of', signature: 'string?last_index_of(sub, from?) → number', summary: 'Position of the last occurrence of a substring, or -1 if absent.', category: 'string' },
-  { name: 'contains', signature: 'string?contains(sub) → boolean', summary: 'True if the operand string contains a substring.', category: 'string' },
-  { name: 'starts_with', signature: 'string?starts_with(prefix) → boolean', summary: 'True if the operand string starts with a prefix.', category: 'string' },
-  { name: 'ends_with', signature: 'string?ends_with(suffix) → boolean', summary: 'True if the operand string ends with a suffix.', category: 'string' },
-  { name: 'replace', signature: 'string?replace(from, to, flags?) → string', summary: 'Replace all occurrences of a substring with another.', category: 'string' },
-  { name: 'matches', signature: 'string?matches(regex, flags?) → boolean', summary: 'Match the operand string against a regular expression.', category: 'string' },
-  { name: 'split', signature: 'string?split(sep, flags?) → sequence<string>', summary: 'Split the operand string around occurrences of a separator.', category: 'string' },
-  { name: 'substring', signature: 'string?substring(from, to?) → string', summary: 'Extract a substring by character offsets.', category: 'string' },
-  { name: 'left_pad', signature: 'string?left_pad(width, filler?) → string', summary: 'Pad the operand string on the left to a given width.', category: 'string' },
-  { name: 'right_pad', signature: 'string?right_pad(width, filler?) → string', summary: 'Pad the operand string on the right to a given width.', category: 'string' },
-  { name: 'word_list', signature: 'string?word_list → sequence<string>', summary: 'Split the operand string on whitespace into a sequence of words.', category: 'string' },
-  { name: 'html', signature: 'string?html → string', summary: 'Escape HTML-significant characters in the operand string (deprecated alias for ?xhtml).', category: 'string' },
-  { name: 'xhtml', signature: 'string?xhtml → string', summary: 'Escape XHTML-significant characters in the operand string.', category: 'string' },
-  { name: 'xml', signature: 'string?xml → string', summary: 'Escape XML-significant characters in the operand string.', category: 'string' },
-  { name: 'js_string', signature: 'string?js_string → string', summary: 'Escape the operand string for use inside a JavaScript string literal.', category: 'string' },
-  { name: 'json_string', signature: 'string?json_string → string', summary: 'Escape the operand string for use inside a JSON string literal.', category: 'string' },
-  { name: 'url', signature: 'string?url(charset?) → string', summary: 'URL-encode the operand string with an optional charset.', category: 'string' },
-  { name: 'url_path', signature: 'string?url_path(charset?) → string', summary: 'URL-encode the operand string for use in a URL path segment.', category: 'string' },
-  { name: 'number', signature: 'string?number → number', summary: 'Parse the operand string as a number.', category: 'string' },
-  { name: 'boolean', signature: 'string?boolean → boolean', summary: 'Parse the operand string as a boolean ("true" / "false").', category: 'string' },
-  { name: 'eval', signature: 'string?eval → any', summary: 'Evaluate the operand string as a FreeMarker expression.', category: 'string' },
-  { name: 'interpret', signature: 'string?interpret → directive', summary: 'Compile the operand string as a FreeMarker template fragment for later inclusion.', category: 'string' },
+  B('upper_case', 'string?upper_case → string', 'Convert the operand string to upper case.', 'string'),
+  B('lower_case', 'string?lower_case → string', 'Convert the operand string to lower case.', 'string'),
+  B('cap_first', 'string?cap_first → string', 'Capitalize the first letter of the operand string.', 'string'),
+  B('uncap_first', 'string?uncap_first → string', 'Lower-case the first letter of the operand string.', 'string'),
+  B('capitalize', 'string?capitalize → string', 'Capitalize the first letter of each word in the operand string.', 'string'),
+  B('trim', 'string?trim → string', 'Remove leading and trailing whitespace from the operand string.', 'string'),
+  B('length', 'string?length → number', 'Number of characters in the operand string.', 'string'),
+  B('index_of', 'string?index_of(sub, from?) → number', 'Position of the first occurrence of a substring, or -1 if absent.', 'string'),
+  B('last_index_of', 'string?last_index_of(sub, from?) → number', 'Position of the last occurrence of a substring, or -1 if absent.', 'string'),
+  B('contains', 'string?contains(sub) → boolean', 'True if the operand string contains a substring.', 'string'),
+  B('starts_with', 'string?starts_with(prefix) → boolean', 'True if the operand string starts with a prefix.', 'string'),
+  B('ends_with', 'string?ends_with(suffix) → boolean', 'True if the operand string ends with a suffix.', 'string'),
+  B('replace', 'string?replace(from, to, flags?) → string', 'Replace all occurrences of a substring with another.', 'string'),
+  B('matches', 'string?matches(regex, flags?) → boolean', 'Match the operand string against a regular expression.', 'string'),
+  B('split', 'string?split(sep, flags?) → sequence<string>', 'Split the operand string around occurrences of a separator.', 'string'),
+  B('substring', 'string?substring(from, to?) → string', 'Extract a substring by character offsets.', 'string'),
+  B('left_pad', 'string?left_pad(width, filler?) → string', 'Pad the operand string on the left to a given width.', 'string'),
+  B('right_pad', 'string?right_pad(width, filler?) → string', 'Pad the operand string on the right to a given width.', 'string'),
+  B('word_list', 'string?word_list → sequence<string>', 'Split the operand string on whitespace into a sequence of words.', 'string'),
+  B('html', 'string?html → string', 'Escape HTML-significant characters in the operand string (deprecated alias for ?xhtml).', 'string'),
+  B('xhtml', 'string?xhtml → string', 'Escape XHTML-significant characters in the operand string.', 'string'),
+  B('xml', 'string?xml → string', 'Escape XML-significant characters in the operand string.', 'string'),
+  B('js_string', 'string?js_string → string', 'Escape the operand string for use inside a JavaScript string literal.', 'string'),
+  B('json_string', 'string?json_string → string', 'Escape the operand string for use inside a JSON string literal.', 'string'),
+  B('url', 'string?url(charset?) → string', 'URL-encode the operand string with an optional charset.', 'string'),
+  B('url_path', 'string?url_path(charset?) → string', 'URL-encode the operand string for use in a URL path segment.', 'string'),
+  B('number', 'string?number → number', 'Parse the operand string as a number.', 'string'),
+  B('boolean', 'string?boolean → boolean', 'Parse the operand string as a boolean ("true" / "false").', 'string'),
+  B('eval', 'string?eval → any', 'Evaluate the operand string as a FreeMarker expression.', 'string'),
+  B('interpret', 'string?interpret → directive', 'Compile the operand string as a FreeMarker template fragment for later inclusion.', 'string'),
 
   // ---- Sequence built-ins ----
-  { name: 'size', signature: 'sequence?size → number', summary: 'Number of items in the operand sequence (also valid on hashes / strings).', category: 'sequence' },
-  { name: 'first', signature: 'sequence?first → any', summary: 'First item of the operand sequence.', category: 'sequence' },
-  { name: 'last', signature: 'sequence?last → any', summary: 'Last item of the operand sequence.', category: 'sequence' },
-  { name: 'reverse', signature: 'sequence?reverse → sequence', summary: 'Return a sequence with the items in reverse order.', category: 'sequence' },
-  { name: 'sort', signature: 'sequence?sort → sequence', summary: 'Return a sequence sorted by natural ordering of its items.', category: 'sequence' },
-  { name: 'sort_by', signature: 'sequence?sort_by(key) → sequence', summary: 'Return a sequence sorted by a hash key (or chain of keys) within each item.', category: 'sequence' },
-  { name: 'seq_contains', signature: 'sequence?seq_contains(item) → boolean', summary: 'True if the operand sequence contains the given item.', category: 'sequence' },
-  { name: 'seq_index_of', signature: 'sequence?seq_index_of(item, from?) → number', summary: 'Index of the first occurrence of an item in the operand sequence, or -1 if absent.', category: 'sequence' },
-  { name: 'seq_last_index_of', signature: 'sequence?seq_last_index_of(item, from?) → number', summary: 'Index of the last occurrence of an item in the operand sequence, or -1 if absent.', category: 'sequence' },
-  { name: 'join', signature: 'sequence?join(sep, empty?, last_sep?) → string', summary: 'Concatenate the operand sequence into a string with a separator.', category: 'sequence' },
-  { name: 'chunk', signature: 'sequence?chunk(size, filler?) → sequence<sequence>', summary: 'Split the operand sequence into fixed-size chunks, optionally padded by a filler.', category: 'sequence' },
-  { name: 'min', signature: 'sequence?min → any', summary: 'Smallest item in the operand sequence (numeric or comparable).', category: 'sequence' },
-  { name: 'max', signature: 'sequence?max → any', summary: 'Largest item in the operand sequence (numeric or comparable).', category: 'sequence' },
-  { name: 'filter', signature: 'sequence?filter(predicate) → sequence', summary: 'Return only items for which the predicate function returns true.', category: 'sequence' },
-  { name: 'map', signature: 'sequence?map(function) → sequence', summary: 'Apply a function to every item in the operand sequence.', category: 'sequence' },
-  { name: 'take_while', signature: 'sequence?take_while(predicate) → sequence', summary: 'Return the leading items for which the predicate returns true.', category: 'sequence' },
-  { name: 'drop_while', signature: 'sequence?drop_while(predicate) → sequence', summary: 'Drop the leading items for which the predicate returns true.', category: 'sequence' },
+  B('size', 'sequence?size → number', 'Number of items in the operand sequence (also valid on hashes / strings).', 'sequence'),
+  B('first', 'sequence?first → any', 'First item of the operand sequence.', 'sequence'),
+  B('last', 'sequence?last → any', 'Last item of the operand sequence.', 'sequence'),
+  B('reverse', 'sequence?reverse → sequence', 'Return a sequence with the items in reverse order.', 'sequence'),
+  B('sort', 'sequence?sort → sequence', 'Return a sequence sorted by natural ordering of its items.', 'sequence'),
+  B('sort_by', 'sequence?sort_by(key) → sequence', 'Return a sequence sorted by a hash key (or chain of keys) within each item.', 'sequence'),
+  B('seq_contains', 'sequence?seq_contains(item) → boolean', 'True if the operand sequence contains the given item.', 'sequence'),
+  B('seq_index_of', 'sequence?seq_index_of(item, from?) → number', 'Index of the first occurrence of an item in the operand sequence, or -1 if absent.', 'sequence'),
+  B('seq_last_index_of', 'sequence?seq_last_index_of(item, from?) → number', 'Index of the last occurrence of an item in the operand sequence, or -1 if absent.', 'sequence'),
+  B('join', 'sequence?join(sep, empty?, last_sep?) → string', 'Concatenate the operand sequence into a string with a separator.', 'sequence'),
+  B('chunk', 'sequence?chunk(size, filler?) → sequence<sequence>', 'Split the operand sequence into fixed-size chunks, optionally padded by a filler.', 'sequence'),
+  B('min', 'sequence?min → any', 'Smallest item in the operand sequence (numeric or comparable).', 'sequence'),
+  B('max', 'sequence?max → any', 'Largest item in the operand sequence (numeric or comparable).', 'sequence'),
+  B('filter', 'sequence?filter(predicate) → sequence', 'Return only items for which the predicate function returns true.', 'sequence'),
+  B('map', 'sequence?map(function) → sequence', 'Apply a function to every item in the operand sequence.', 'sequence'),
+  B('take_while', 'sequence?take_while(predicate) → sequence', 'Return the leading items for which the predicate returns true.', 'sequence'),
+  B('drop_while', 'sequence?drop_while(predicate) → sequence', 'Drop the leading items for which the predicate returns true.', 'sequence'),
 
   // ---- Hash built-ins ----
-  { name: 'keys', signature: 'hash?keys → sequence<string>', summary: 'Sequence of keys in the operand hash.', category: 'hash' },
-  { name: 'values', signature: 'hash?values → sequence', summary: 'Sequence of values in the operand hash.', category: 'hash' },
+  B('keys', 'hash?keys → sequence<string>', 'Sequence of keys in the operand hash.', 'hash'),
+  B('values', 'hash?values → sequence', 'Sequence of values in the operand hash.', 'hash'),
 
   // ---- Numeric built-ins ----
-  { name: 'abs', signature: 'number?abs → number', summary: 'Absolute value of the operand number.', category: 'numeric' },
-  { name: 'round', signature: 'number?round → number', summary: 'Round the operand number to the nearest integer.', category: 'numeric' },
-  { name: 'floor', signature: 'number?floor → number', summary: 'Largest integer not greater than the operand number.', category: 'numeric' },
-  { name: 'ceiling', signature: 'number?ceiling → number', summary: 'Smallest integer not less than the operand number.', category: 'numeric' },
-  { name: 'int', signature: 'number?int → number', summary: 'Truncate the operand number toward zero.', category: 'numeric' },
-  { name: 'string', signature: 'number?string(format?) → string', summary: 'Format the operand number using the given pattern (or the engine default).', category: 'numeric' },
-  { name: 'c', signature: 'number?c → string', summary: 'Format the operand number in computer/locale-independent form.', category: 'numeric' },
-  { name: 'is_infinite', signature: 'number?is_infinite → boolean', summary: 'True if the operand number is infinite.', category: 'numeric' },
-  { name: 'is_nan', signature: 'number?is_nan → boolean', summary: 'True if the operand number is NaN.', category: 'numeric' },
+  B('abs', 'number?abs → number', 'Absolute value of the operand number.', 'numeric'),
+  B('round', 'number?round → number', 'Round the operand number to the nearest integer.', 'numeric'),
+  B('floor', 'number?floor → number', 'Largest integer not greater than the operand number.', 'numeric'),
+  B('ceiling', 'number?ceiling → number', 'Smallest integer not less than the operand number.', 'numeric'),
+  B('int', 'number?int → number', 'Truncate the operand number toward zero.', 'numeric'),
+  B('string', 'number?string(format?) → string', 'Format the operand number using the given pattern (or the engine default).', 'numeric'),
+  B('c', 'number?c → string', 'Format the operand number in computer/locale-independent form.', 'numeric'),
+  B('is_infinite', 'number?is_infinite → boolean', 'True if the operand number is infinite.', 'numeric'),
+  B('is_nan', 'number?is_nan → boolean', 'True if the operand number is NaN.', 'numeric'),
 
   // ---- Boolean built-ins ----
-  { name: 'then', signature: 'boolean?then(whenTrue, whenFalse) → any', summary: 'Return one of two values depending on the operand boolean (ternary).', category: 'boolean' },
+  B('then', 'boolean?then(whenTrue, whenFalse) → any', 'Return one of two values depending on the operand boolean (ternary).', 'boolean'),
 
   // ---- Date built-ins ----
-  { name: 'date', signature: 'datelike?date → date / string?date(pattern?) → date', summary: 'Coerce the operand to / parse the operand as a date-only value.', category: 'date' },
-  { name: 'time', signature: 'datelike?time → time / string?time(pattern?) → time', summary: 'Coerce the operand to / parse the operand as a time-only value.', category: 'date' },
-  { name: 'datetime', signature: 'datelike?datetime → datetime / string?datetime(pattern?) → datetime', summary: 'Coerce the operand to / parse the operand as a date-and-time value.', category: 'date' },
-  { name: 'iso_utc', signature: 'datelike?iso_utc → string', summary: 'Format the operand date as an ISO 8601 string in UTC.', category: 'date' },
-  { name: 'iso_local', signature: 'datelike?iso_local → string', summary: 'Format the operand date as an ISO 8601 string in the engine\'s local time zone.', category: 'date' },
+  B('date', 'datelike?date → date / string?date(pattern?) → date', 'Coerce the operand to / parse the operand as a date-only value.', 'date'),
+  B('time', 'datelike?time → time / string?time(pattern?) → time', 'Coerce the operand to / parse the operand as a time-only value.', 'date'),
+  B('datetime', 'datelike?datetime → datetime / string?datetime(pattern?) → datetime', 'Coerce the operand to / parse the operand as a date-and-time value.', 'date'),
+  B('iso_utc', 'datelike?iso_utc → string', 'Format the operand date as an ISO 8601 string in UTC.', 'date'),
+  B('iso_local', "datelike?iso_local → string", "Format the operand date as an ISO 8601 string in the engine's local time zone.", 'date'),
 
   // ---- Node (XML / DOM) built-ins ----
-  { name: 'children', signature: 'node?children → sequence<node>', summary: 'Sequence of child nodes of the operand XML/DOM node.', category: 'node' },
-  { name: 'parent', signature: 'node?parent → node', summary: 'Parent of the operand XML/DOM node.', category: 'node' },
-  { name: 'node_name', signature: 'node?node_name → string', summary: 'Name of the operand XML/DOM node.', category: 'node' },
-  { name: 'node_type', signature: 'node?node_type → string', summary: 'Type of the operand XML/DOM node (element, text, attribute, …).', category: 'node' },
-  { name: 'ancestors', signature: 'node?ancestors(name?) → sequence<node>', summary: 'Sequence of ancestor nodes of the operand, optionally filtered by name.', category: 'node' },
+  B('children', 'node?children → sequence<node>', 'Sequence of child nodes of the operand XML/DOM node.', 'node'),
+  B('parent', 'node?parent → node', 'Parent of the operand XML/DOM node.', 'node'),
+  B('node_name', 'node?node_name → string', 'Name of the operand XML/DOM node.', 'node'),
+  B('node_type', 'node?node_type → string', 'Type of the operand XML/DOM node (element, text, attribute, …).', 'node'),
+  B('ancestors', 'node?ancestors(name?) → sequence<node>', 'Sequence of ancestor nodes of the operand, optionally filtered by name.', 'node'),
 
   // ---- Meta / introspection built-ins ----
-  { name: 'is_string', signature: 'any?is_string → boolean', summary: 'True if the operand is a string.', category: 'meta' },
-  { name: 'is_number', signature: 'any?is_number → boolean', summary: 'True if the operand is a number.', category: 'meta' },
-  { name: 'is_boolean', signature: 'any?is_boolean → boolean', summary: 'True if the operand is a boolean.', category: 'meta' },
-  { name: 'is_date', signature: 'any?is_date → boolean', summary: 'True if the operand is a date / time / datetime value.', category: 'meta' },
-  { name: 'is_sequence', signature: 'any?is_sequence → boolean', summary: 'True if the operand is a sequence.', category: 'meta' },
-  { name: 'is_hash', signature: 'any?is_hash → boolean', summary: 'True if the operand is a hash.', category: 'meta' },
-  { name: 'is_macro', signature: 'any?is_macro → boolean', summary: 'True if the operand is a user-defined macro.', category: 'meta' },
-  { name: 'is_directive', signature: 'any?is_directive → boolean', summary: 'True if the operand is a directive (built-in or user macro).', category: 'meta' },
-  { name: 'has_content', signature: 'any?has_content → boolean', summary: 'True if the operand is non-null and non-empty.', category: 'meta' },
-  { name: 'default', signature: 'any?default(fallback) → any', summary: 'Return the operand if it has content, otherwise return the fallback.', category: 'meta' },
-  { name: 'exists', signature: 'any?exists → boolean', summary: 'True if the operand is defined (deprecated; prefer ?has_content / ??).', category: 'meta' },
-  { name: 'new', signature: 'classname?new(args…) → any', summary: 'Instantiate the named class as a FreeMarker model (where the engine permits it).', category: 'meta' },
+  B('is_string', 'any?is_string → boolean', 'True if the operand is a string.', 'meta'),
+  B('is_number', 'any?is_number → boolean', 'True if the operand is a number.', 'meta'),
+  B('is_boolean', 'any?is_boolean → boolean', 'True if the operand is a boolean.', 'meta'),
+  B('is_date', 'any?is_date → boolean', 'True if the operand is a date / time / datetime value.', 'meta'),
+  B('is_sequence', 'any?is_sequence → boolean', 'True if the operand is a sequence.', 'meta'),
+  B('is_hash', 'any?is_hash → boolean', 'True if the operand is a hash.', 'meta'),
+  B('is_macro', 'any?is_macro → boolean', 'True if the operand is a user-defined macro.', 'meta'),
+  B('is_directive', 'any?is_directive → boolean', 'True if the operand is a directive (built-in or user macro).', 'meta'),
+  B('has_content', 'any?has_content → boolean', 'True if the operand is non-null and non-empty.', 'meta'),
+  B('default', 'any?default(fallback) → any', 'Return the operand if it has content, otherwise return the fallback.', 'meta'),
+  B('exists', 'any?exists → boolean', 'True if the operand is defined (deprecated; prefer ?has_content / ??).', 'meta'),
+  B('new', 'classname?new(args…) → any', 'Instantiate the named class as a FreeMarker model (where the engine permits it).', 'meta'),
 ];
 
 /**

@@ -32,6 +32,10 @@ describe('DIRECTIVES catalog', () => {
       expect(typeof d.category).toBe('string');
       expect(d.category.length).toBeGreaterThan(0);
       expect(d.shape === 'block' || d.shape === 'inline').toBe(true);
+      expect(typeof d.documentationUri).toBe('string');
+      expect(d.documentationUri).toMatch(
+        /^https:\/\/freemarker\.apache\.org\/docs\/ref_directive_[a-z_]+\.html$/,
+      );
     }
   });
 
@@ -94,5 +98,26 @@ describe('DIRECTIVES catalog', () => {
     expect(isKnownDirective('if')).toBe(true);
     expect(isKnownDirective('list')).toBe(true);
     expect(isKnownDirective('notADirective')).toBe(false);
+  });
+
+  test('sibling directives share their parent reference URL', () => {
+    const find = (name: string) =>
+      DIRECTIVES.find((d) => d.name === name)!.documentationUri;
+
+    // <#if> family — elseif/else share the if page.
+    expect(find('elseif')).toBe(find('if'));
+    expect(find('else')).toBe(find('if'));
+
+    // <#switch> family — case/default share the switch page.
+    expect(find('case')).toBe(find('switch'));
+    expect(find('default')).toBe(find('switch'));
+
+    // <#attempt> family — recover shares the attempt page.
+    expect(find('recover')).toBe(find('attempt'));
+
+    // Whitespace directives — t/lt/rt/nt share the t page.
+    expect(find('lt')).toBe(find('t'));
+    expect(find('rt')).toBe(find('t'));
+    expect(find('nt')).toBe(find('t'));
   });
 });

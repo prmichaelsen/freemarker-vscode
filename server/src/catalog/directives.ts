@@ -3,21 +3,25 @@
  * kind: pattern
  * status: active
  * weight: 0.7
- * tags: ["topic:freemarker", "freemarker", "topic:lsp", "lsp", "topic:catalog", "catalog", "freemarker-vscode", "directives"]
+ * tags: ["topic:freemarker", "freemarker", "topic:lsp", "lsp", "topic:catalog", "catalog", "freemarker-vscode", "directives", "topic:documentation-uri", "documentation-uri"]
  * summary: >
  *   Closed-set catalog of FreeMarker directives shipped with
- *   freemarker-vscode. 32 entries, the Phase 1 directive set named in
- *   design.freemarker-worker-enhancement~9d689704 §4. Each record
- *   carries name, signature (canonical FTL form), summary, category.
- *   Feeds the server's onCompletion handler and (next-wake) the
- *   hover provider. Also: FreeMarker directives, FTL directives,
- *   directive reference, LSP completion catalog.
- * rationale: Shared catalog so completion + hover stay in sync.
- * applies: editing FreeMarker directives, adding LSP completion items, wiring hover content for directives, expanding the Phase 1 directive set
+ *   freemarker-vscode. 33 entries, the Phase 1 directive set named in
+ *   design.freemarker-worker-enhancement~9d689704 §4 plus the
+ *   sibling-only recover token. Each record carries name, signature
+ *   (canonical FTL form), summary, category, shape, and
+ *   documentationUri (canonical freemarker.apache.org reference page).
+ *   Feeds the server's onCompletion handler and the hover provider.
+ *   Also: FreeMarker directives, FTL directives, directive reference,
+ *   LSP completion catalog, documentationUri, hover reference link.
+ * rationale: Shared catalog so completion + hover stay in sync; documentationUri lets the hover Markdown link out to the canonical reference page.
+ * applies: editing FreeMarker directives, adding LSP completion items, wiring hover content for directives, expanding the Phase 1 directive set, refreshing canonical documentation URLs
  * seeded_questions:
  *   - "What FreeMarker directives does the extension know about?"
  *   - "Where is the directive reference catalog?"
  *   - "FreeMarker directive signatures"
+ *   - "freemarker-vscode documentationUri"
+ *   - "where does the hover Reference link point"
  * @scry.entry.end
  */
 
@@ -49,10 +53,21 @@ export interface DirectiveRecord {
    * (e.g. `<#else>` inside `<#if>`).
    */
   readonly shape: 'block' | 'inline';
+  /**
+   * Canonical freemarker.apache.org reference page for this directive.
+   * Sibling directives that share a parent's documentation page (e.g.
+   * `elseif`/`else` → `ref_directive_if.html`) point to that parent.
+   * Always a fully-qualified absolute URL — the hover Markdown emits
+   * it verbatim as a Reference link.
+   */
+  readonly documentationUri: string;
 }
 
+/** Base URL for the FreeMarker reference manual. */
+const REF = 'https://freemarker.apache.org/docs';
+
 /**
- * The 32-entry closed Phase 1 set. Order matches design doc §4 Phase 1
+ * The 33-entry closed Phase 1 set. Order matches design doc §4 Phase 1
  * item 1, except siblings (`else`, `elseif`, `case`, `default`, `break`,
  * `continue`, `return`) are kept beside their parent for readability.
  */
@@ -64,6 +79,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Conditionally include content based on a boolean expression.',
     category: 'flow-control',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_if.html`,
   },
   {
     name: 'elseif',
@@ -71,6 +87,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Additional branch of an enclosing <#if> directive.',
     category: 'flow-control',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_if.html`,
   },
   {
     name: 'else',
@@ -78,6 +95,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Fallback branch of an enclosing <#if> or <#list> directive.',
     category: 'flow-control',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_if.html`,
   },
   {
     name: 'list',
@@ -85,6 +103,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Iterate over a sequence or hash, with optional empty-case branch.',
     category: 'flow-control',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_list.html`,
   },
   {
     name: 'switch',
@@ -92,6 +111,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Dispatch on a value through a sequence of <#case> arms.',
     category: 'flow-control',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_switch.html`,
   },
   {
     name: 'case',
@@ -99,6 +119,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Arm of an enclosing <#switch> directive.',
     category: 'flow-control',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_switch.html`,
   },
   {
     name: 'default',
@@ -106,6 +127,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Fallback arm of an enclosing <#switch> directive.',
     category: 'flow-control',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_switch.html`,
   },
   {
     name: 'break',
@@ -113,6 +135,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Exit the nearest enclosing <#list> or <#switch> body.',
     category: 'flow-control',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_break.html`,
   },
   {
     name: 'continue',
@@ -120,6 +143,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Skip to the next iteration of the nearest <#list> body.',
     category: 'flow-control',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_continue.html`,
   },
   {
     name: 'return',
@@ -127,6 +151,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Return from the enclosing <#function> or <#macro>.',
     category: 'flow-control',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_return.html`,
   },
   {
     name: 'stop',
@@ -134,6 +159,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Halt template processing with an optional error reason.',
     category: 'flow-control',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_stop.html`,
   },
 
   // Definitions
@@ -143,6 +169,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Create or update a variable in the template namespace.',
     category: 'definition',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_assign.html`,
   },
   {
     name: 'local',
@@ -150,6 +177,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Create or update a variable in the enclosing macro/function local scope.',
     category: 'definition',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_local.html`,
   },
   {
     name: 'global',
@@ -157,6 +185,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Create or update a variable in the global (data-model-shadowing) namespace.',
     category: 'definition',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_global.html`,
   },
   {
     name: 'macro',
@@ -164,6 +193,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Define a reusable user-directive (macro) with positional and defaulted parameters.',
     category: 'definition',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_macro.html`,
   },
   {
     name: 'function',
@@ -171,6 +201,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Define a callable expression-context function.',
     category: 'definition',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_function.html`,
   },
   {
     name: 'nested',
@@ -178,6 +209,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Render the nested content passed to the enclosing <#macro>.',
     category: 'definition',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_nested.html`,
   },
 
   // Inclusion
@@ -187,6 +219,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Inline another template into the current output.',
     category: 'inclusion',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_include.html`,
   },
   {
     name: 'import',
@@ -194,6 +227,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Load another template as a namespace of definitions.',
     category: 'inclusion',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_import.html`,
   },
 
   // Output / escaping
@@ -203,6 +237,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Override a FreeMarker engine setting (locale, number_format, output_format, …) for the rest of the template.',
     category: 'output',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_setting.html`,
   },
   {
     name: 'compress',
@@ -210,6 +245,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Collapse runs of whitespace in the enclosed output.',
     category: 'output',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_compress.html`,
   },
   {
     name: 'escape',
@@ -217,6 +253,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Wrap every interpolation in the enclosed body with an escape expression.',
     category: 'escape',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_escape.html`,
   },
   {
     name: 'noescape',
@@ -224,6 +261,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Disable a surrounding <#escape> for the enclosed body.',
     category: 'escape',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_escape.html`,
   },
   {
     name: 'outputformat',
@@ -231,6 +269,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Set the auto-escaping output format for the enclosed body.',
     category: 'escape',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_outputformat.html`,
   },
   {
     name: 'noautoesc',
@@ -238,15 +277,17 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Disable auto-escaping for the enclosed body.',
     category: 'escape',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_noautoesc.html`,
   },
 
-  // Whitespace meta directives
+  // Whitespace meta directives (all four share a single reference page).
   {
     name: 't',
     signature: '<#t>',
     summary: 'Trim leading and trailing whitespace on this line of source.',
     category: 'meta',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_t.html`,
   },
   {
     name: 'lt',
@@ -254,6 +295,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Trim leading whitespace on this line of source.',
     category: 'meta',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_t.html`,
   },
   {
     name: 'rt',
@@ -261,6 +303,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Trim trailing whitespace on this line of source.',
     category: 'meta',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_t.html`,
   },
   {
     name: 'nt',
@@ -268,6 +311,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Suppress whitespace trimming on this line of source.',
     category: 'meta',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_t.html`,
   },
   {
     name: 'noparse',
@@ -275,6 +319,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Emit the enclosed body verbatim; do not parse FreeMarker syntax inside it.',
     category: 'meta',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_noparse.html`,
   },
   {
     name: 'ftl',
@@ -282,6 +327,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Per-template header directive setting engine-level options for this template.',
     category: 'meta',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_ftl.html`,
   },
 
   // Error handling
@@ -291,6 +337,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Try a body and run the <#recover> arm if it throws.',
     category: 'error-handling',
     shape: 'block',
+    documentationUri: `${REF}/ref_directive_attempt.html`,
   },
   {
     name: 'recover',
@@ -298,6 +345,7 @@ export const DIRECTIVES: readonly DirectiveRecord[] = [
     summary: 'Recovery arm of an enclosing <#attempt> directive.',
     category: 'error-handling',
     shape: 'inline',
+    documentationUri: `${REF}/ref_directive_attempt.html`,
   },
 ];
 

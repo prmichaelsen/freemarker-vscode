@@ -106,16 +106,17 @@ describe('symbolAtCursor', () => {
 });
 
 describe('catalogHoverMarkdown', () => {
-  test('emits signature/summary/category Markdown', () => {
+  test('emits signature/summary/category Markdown with [Reference](uri)', () => {
     const hover = catalogHoverMarkdown(
       '<#if expr>...</#if>',
       'Conditionally include content based on a boolean expression.',
       'flow-control',
+      'https://freemarker.apache.org/docs/ref_directive_if.html',
     );
     expect(hover.contents).toEqual({
       kind: 'markdown',
       value:
-        '**`<#if expr>...</#if>`**\n\nConditionally include content based on a boolean expression.\n\n_Category: flow-control_',
+        '**`<#if expr>...</#if>`**\n\nConditionally include content based on a boolean expression.\n\n_Category: flow-control_\n\n[Reference](https://freemarker.apache.org/docs/ref_directive_if.html)',
     });
   });
 });
@@ -131,6 +132,9 @@ describe('resolveHover', () => {
     const md = (hover!.contents as { value: string }).value;
     expect(md).toContain('Conditionally include content');
     expect(md).toContain('_Category: flow-control_');
+    expect(md).toContain(
+      '[Reference](https://freemarker.apache.org/docs/ref_directive_if.html)',
+    );
   });
 
   test('resolves a builtin hover (?upper_case)', () => {
@@ -142,6 +146,9 @@ describe('resolveHover', () => {
     expect(hover).not.toBeNull();
     const md = (hover!.contents as { value: string }).value;
     expect(md).toContain('Convert the operand string to upper case');
+    expect(md).toContain(
+      '[Reference](https://freemarker.apache.org/docs/ref_builtins_string.html#ref_builtin_upper_case)',
+    );
   });
 
   test('returns null for an unknown directive name', () => {
