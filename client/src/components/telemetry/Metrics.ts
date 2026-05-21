@@ -6,14 +6,11 @@ export const Metrics = {
   GoToReference: 'GoToReference',
   ExtensionActivate: 'ExtensionActivate',
   RunTests: 'RunTests',
-  Hover: {
-    Cache: {
-      Hit: 'Hover.Cache.Hit',
-      Miss: 'Hover.Cache.Miss',
-    },
-    Found: 'Hover.Found',
-    NotFound: 'Hover.NotFound',
-  },
+  // Hover.* constants were retired in v0.1.7. They were authored when hover
+  // ran client-side (FreeMarkerHoverProvider with a local cache); v0.1.1
+  // migrated hover to the LSP server and the cache/found/not-found events
+  // ceased to have a publisher. Re-adding hover telemetry, if ever wanted,
+  // belongs server-side alongside the LSP onHover handler.
   AcceptCompletion: 'AcceptCompletion',
   Fatal: 'Fatal',
   Error: 'Error',

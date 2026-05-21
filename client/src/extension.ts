@@ -30,19 +30,22 @@ const documentFilters: DocumentFilter[] = [
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
+  // Config namespace MUST match package.json's `contributes.configuration.properties`
+  // keys — the user-facing VS Code Settings UI is wired to those keys. v0.1.7
+  // fixes a drift where the runtime read from `freemarker-language-server.*`
+  // while package.json declared `freemarker-vscode.*`, so toggles in the UI
+  // had no runtime effect.
+  const config = workspace.getConfiguration('freemarker-vscode');
   const feature = {
-    watcher: workspace.getConfiguration('freemarker-language-server').get('watcher', true) as boolean,
-    referenceProvider: workspace.getConfiguration('freemarker-language-server').get('go-to-reference', true) as boolean,
-    diagnosticsProvider: workspace.getConfiguration('freemarker-language-server').get('diagnostics', true) as boolean,
-    fileSystemProvider: workspace.getConfiguration('freemarker-language-server').get('file-system', false) as boolean,
-    implementationProvider: workspace.getConfiguration('freemarker-language-server').get('go-to-implementations', true) as boolean,
-    semanticTokensProvider: workspace.getConfiguration('freemarker-language-server').get('semantic-tokens', true) as boolean,
+    watcher: config.get('watcher', true) as boolean,
+    referenceProvider: config.get('go-to-reference', true) as boolean,
+    diagnosticsProvider: config.get('diagnostics', true) as boolean,
+    implementationProvider: config.get('go-to-implementations', true) as boolean,
+    semanticTokensProvider: config.get('semantic-tokens', true) as boolean,
     // Hover is now an LSP server capability (see server/src/server.ts);
     // the client flag is retired and the server is the source of truth.
     // Completion was retired client-side in v0.1.0 for the same reason.
-    debugParser: true,
-    testAdapter: workspace.getConfiguration('freemarker-language-server').get('test-explorer', false) as boolean,
-    telemetry: workspace.getConfiguration('freemarker-language-server').get('telemetry', false) as boolean,
+    telemetry: config.get('telemetry', false) as boolean,
   };
 
   Telemetry.enabled = feature.telemetry;
